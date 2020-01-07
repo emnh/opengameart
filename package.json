@@ -1,0 +1,19 @@
+{
+  "name": "opengameart",
+  "version": "1.0.0",
+  "description": "Categorizing OpenGameArt",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emnh/opengameart.git"
+  },
+  "author": "Eivind Magnus Hvidevold <hvidevold@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/emnh/opengameart/issues"
+  },
+  "homepage": "https://github.com/emnh/opengameart#readme"
+}
