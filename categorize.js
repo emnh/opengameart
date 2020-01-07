@@ -1,3 +1,4 @@
+const $ = require('jquery');
 const speed = 3;
 const files = {};
 
@@ -22,30 +23,41 @@ for (var i in images) {
 
 const keys = Object.keys(files);
 
+const table = $("<table/>");
+$("body").append(table);
+
 let imgs = [];
-function addImage() {
-  var r = Math.floor(Math.random() * keys.length);
-  var r2 = Math.floor(Math.random() * files[keys[r]].length);
-  var uri = files[keys[r]][r2];
+function addImage(r) {
+  //var r = Math.floor(Math.random() * keys.length);
+  //var r2 = Math.floor(Math.random() * files[keys[r]].length);
+  
+  for (var r2 = 0; r2 < files[keys[r]].length; r2++) {
+    var uri = files[keys[r]][r2];
 
-  var img = document.createElement('img');
-  var a = document.createElement('a');
+    var img = document.createElement('img');
+    var a = document.createElement('a');
 
-  var fullURI = 'https://opengameart.org/sites/default/' + uri;
-  let href = '';
-  if (uri.startsWith('files/')) {
-    href = links[fullURI];
-    console.log('files', uri, fullURI, href);
-  } else {
-    let f = fullURI.replace('/unpacked/', '/files/');
-    let f2 = f.split('/').slice(0, 7).join('/');
-    href = links[f2];
-    console.log('packed', f2, href);
+    var fullURI = 'https://opengameart.org/sites/default/' + uri;
+    let href = '';
+    if (uri.startsWith('files/')) {
+      href = links[fullURI];
+      console.log('files', uri, fullURI, href);
+    } else {
+      let f = fullURI.replace('/unpacked/', '/files/');
+      let f2 = f.split('/').slice(0, 7).join('/');
+      href = links[f2];
+      console.log('packed', f2, href);
+    }
+    a.href = 'https://opengameart.org/' + href.replace(/.html$/, '');
+    const tr = $("<tr/>");
+    const td = $("<td/>");
+    table.append(tr);
+    tr.append(td);
+    td.append(a);
+    //document.body.append(a);
+    a.append(img);
+    img.src = 'https://opengameart.fra1.cdn.digitaloceanspaces.com/' + encodeURI(uri).replace(/#/g, '%23');
   }
-  a.href = 'https://opengameart.org/' + href.replace(/.html$/, '');
-  document.body.append(a);
-  a.append(img);
-  img.src = 'https://opengameart.fra1.cdn.digitaloceanspaces.com/' + encodeURI(uri).replace(/#/g, '%23');
 }
 function scroll() {
   var doc = document.documentElement;
@@ -59,4 +71,4 @@ function scroll() {
   }
   return false;
 }
-addImage();
+addImage(0);
