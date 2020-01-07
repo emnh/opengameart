@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/emnh/opengameart/issues"
   },
-  "homepage": "https://github.com/emnh/opengameart#readme"
+  "homepage": "https://github.com/emnh/opengameart#readme",
+  "devDependencies": {
+    "electron": "^7.1.7"
+  }
 }
