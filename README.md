@@ -12,6 +12,9 @@ Go to home page for full scale (50 MiB image: 6400x6400).
 
 Home page: https://emh.lart.no/publish/opengameart/
 
+Source code is at "src". Sorry for lots of hard coded details.
+
+Progress:
  - DONE: Mirror OpenGameArt
  - DONE: Unpack all zip files (but not processed yet)
  - TODO: Unpack all sprites
