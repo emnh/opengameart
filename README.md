@@ -2,6 +2,8 @@
 
 ![grid tsne result](https://emh.lart.no/publish/opengameart/gridtsne-small.png "Grid TSNE Result")
 
+Home page: https://emh.lart.no/publish/opengameart/
+
  - DONE: Mirror OpenGameArt
  - DONE: Unpack all zip files (but not processed yet)
  - TODO: Unpack all sprites
