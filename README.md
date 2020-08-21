@@ -12,6 +12,8 @@ If you want to reproduce my results, this tool looks more finished taking comman
 
 Perhaps I will create a image similarity search engine as well. It should be easy to do when already given the feature vectors of the images.
 
+# Results
+
 Here follows some previews of the result of my labour:
 
 ![grid tsne crop result](https://emh.lart.no/publish/opengameart/gridtsne-crop2.png "Grid TSNE Cropped Preview")
@@ -26,7 +28,7 @@ Home page: https://emh.lart.no/publish/opengameart/
 
 Source code is at "src". Sorry for lots of hard coded details.
 
-Progress:
+# Progress
  - DONE: Mirror OpenGameArt
  - DONE: Unpack all zip files (but not processed yet)
  - TODO: Unpack all sprites
@@ -35,3 +37,8 @@ Progress:
  - DONE: Test it with primitive HTML (src/html-out.py)
  - DONE: Run lapjv (src/grid.py) (https://github.com/src-d/lapjv) on t-SNE to embed on grid
  - TODO: Some way to link back to the original OpenGameArt page from tiled grid t-SNE, so you can get the art you see that you want.
+
+# Future
+ - Perhaps look into UMAP:
+  - https://arxiv.org/abs/1802.03426
+  - https://github.com/lmcinnes/umap
