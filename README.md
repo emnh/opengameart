@@ -1,7 +1,9 @@
 # Categorizing OpenGameArt
 
+![grid tsne result](https://emh.lart.no/publish/opengameart/gridtsne-small.png "Grid TSNE Result")
+
  - DONE: Mirror OpenGameArt
- - DONE: Unpack all zip files
+ - DONE: Unpack all zip files (but not processed yet)
  - TODO: Unpack all sprites
  - DONE: Get feature vector of each image (src/predict.py)
  - DONE: Run t-SNE to get 2D embedding (src/tsne.py)
