@@ -32,15 +32,27 @@ def loadImage(img_path):
 #feat_extractor.summary()
 
 #if len(sys.argv) > 1:
-path = '/emh-dev/labelled-pixel-art/out16'
-outfd = open('list.txt', 'w')
+path = '/mnt/d/opengameart/files'
+prevfd = open('files-list.txt')
+prevdata = prevfd.read()
+prevfd.close()
+outfd = open('files-list.txt', 'a')
 start = time.time()
 i = 0
 for fname in os.listdir(path):
-    i += 1
+    flow = fname.lower()
+    if not (flow.endswith('.png') or flow.endswith('.jpg')):
+        continue
     img_path = os.path.join(path, fname)
-    #img_path = 'elephant.jpg'
-    x = loadImage(img_path)
+    if "\"" + img_path + "\"" in prevdata:
+        print("Already got "+ img_path)
+        continue
+    i += 1
+    try:
+        x = loadImage(img_path)
+    except:
+        print("ERROR LOADING IMAGE: " + fname)
+        continue
     #predictions = model.predict(x)
     #for _, pred, prob in decode_predictions(predictions)[0]:
     #    print("predicted %s with probability %0.3f" % (pred, prob))
@@ -54,5 +66,5 @@ for fname in os.listdir(path):
     outfd.write(json.dumps(d) + "\n")
     #print(features.shape)
     if i % 10 == 0:
-        print(str((end - start) / i) + " s per image. " + str(i) + " images")
+        print(str((end - start) / i) + " s per image. " + str(i) + " images: file " + fname)
 outfd.close()

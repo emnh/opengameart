@@ -5,14 +5,14 @@ import numpy as np
 import json
 
 data = []
-lines = open('list.txt').readlines()
+lines = open('opengameart-files/files-list.txt').readlines()
 for line in lines:
     d = json.loads(line.rstrip())
     data.append(d["features"])
 data = np.array(data)
 print(data.shape)
 
-embedding_array = bhtsne.run_bh_tsne(data, initial_dims=data.shape[1])
+embedding_array = bhtsne.run_bh_tsne(data, initial_dims=data.shape[1],verbose=True)
 outfd = open('embeddings.txt', 'w')
 outfd.write(json.dumps(embedding_array.tolist()))
 outfd.close()
