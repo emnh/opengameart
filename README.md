@@ -1,6 +1,12 @@
 # Categorizing OpenGameArt
 
-![grid tsne result](https://emh.lart.no/publish/opengameart/gridtsne-small.png "Grid TSNE Result")
+The idea is to create a huge tile map where similar images appear together. In the future there will be links back to OGA.
+
+Perhaps I will create a image similarity search engine as well. It should be easy to do when already given the feature vectors of the images.
+
+![grid tsne crop result](https://emh.lart.no/publish/opengameart/gridtsne-crop.png "Grid TSNE Cropped Preview")
+
+![grid tsne scaled result](https://emh.lart.no/publish/opengameart/gridtsne-small.png "Grid TSNE Scaled Preview") Go to h
 
 Home page: https://emh.lart.no/publish/opengameart/
 
