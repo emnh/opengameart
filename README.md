@@ -6,6 +6,8 @@ In order to make it more easily browseable I had the idea to categorize the imag
 
 The idea is to create a huge tile map where similar images appear together. In the future there will be links back to OGA.
 
+Here is a similar tool: https://ml4a.github.io/guides/ImageTSNELive/ but I didn't try it yet as it seemed fiddly to get to work regarding dependencies.
+
 Perhaps I will create a image similarity search engine as well. It should be easy to do when already given the feature vectors of the images.
 
 Here follows some previews of the result of my labour:
