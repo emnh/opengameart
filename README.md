@@ -1,4 +1,4 @@
-# Categorizing OpenGameArt
+# Categorizing OpenGameArt (using Grid t-SNE)
 
 https://opengameart.org/ is a page for sharing reusable art for computer games.
 
@@ -8,11 +8,13 @@ The idea is to create a huge tile map where similar images appear together. In t
 
 Perhaps I will create a image similarity search engine as well. It should be easy to do when already given the feature vectors of the images.
 
+Here follows some previews of the result of my labour:
+
 ![grid tsne crop result](https://emh.lart.no/publish/opengameart/gridtsne-crop2.png "Grid TSNE Cropped Preview")
 
 ![grid tsne scaled result](https://emh.lart.no/publish/opengameart/gridtsne-small.png "Grid TSNE Scaled Preview")
 
-Go to home page for full scale (50 MiB image: 6400x6400).
+Go to home page for full scale result (50 MiB image: 6400x6400, containing almost 10k 64x64 images).
 
 Home page: https://emh.lart.no/publish/opengameart/
 
