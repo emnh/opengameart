@@ -1,5 +1,9 @@
 # Categorizing OpenGameArt
 
+https://opengameart.org/ is a page for sharing reusable art for computer games.
+
+In order to make it more easily browseable I had the idea to categorize the images using machine learning.
+
 The idea is to create a huge tile map where similar images appear together. In the future there will be links back to OGA.
 
 Perhaps I will create a image similarity search engine as well. It should be easy to do when already given the feature vectors of the images.
