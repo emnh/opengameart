@@ -20,6 +20,8 @@ Here follows some previews of the result of my labour:
 
 Go to home page for full scale result (50 MiB image: 6400x6400, containing almost 10k 64x64 images).
 
+Again, sorry that there are no links back to OGA yet, and that big tile sheets are just smushed when scaled to 64x64.
+
 Home page: https://emh.lart.no/publish/opengameart/
 
 Source code is at "src". Sorry for lots of hard coded details.
