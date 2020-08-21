@@ -6,7 +6,9 @@ Perhaps I will create a image similarity search engine as well. It should be eas
 
 ![grid tsne crop result](https://emh.lart.no/publish/opengameart/gridtsne-crop2.png "Grid TSNE Cropped Preview")
 
-![grid tsne scaled result](https://emh.lart.no/publish/opengameart/gridtsne-small.png "Grid TSNE Scaled Preview") Go to h
+![grid tsne scaled result](https://emh.lart.no/publish/opengameart/gridtsne-small.png "Grid TSNE Scaled Preview")
+
+Go to home page for full scale (50 MiB image: 6400x6400).
 
 Home page: https://emh.lart.no/publish/opengameart/
 
