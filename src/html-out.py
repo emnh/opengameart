@@ -28,7 +28,7 @@ for line, embedding in zip(lines, embeddings):
     x -= minx
     y -= miny
     top = x / tw * 3200
-    left = y / tw * 3200
+    left = y / th * 3200
     outfd.write(f"<img src=\"{path}\" style=\"width: 16px; max-height: 16px; position: absolute; left: {left}; top: {top};\"></img>")
 outfd.close()
 
@@ -43,7 +43,7 @@ for line, embedding in zip(lines, embeddings):
     x -= minx
     y -= miny
     top = x / tw * 3200
-    left = y / tw * 3200
+    left = y / th * 3200
     outfd.write('"' + path + '",\n')
     #outfd.write(f"<img src=\"{path}\" style=\"width: 16px; max-height: 16px; position: absolute; left: {left}; top: {top};\"></img>")
 outfd.write('];')
