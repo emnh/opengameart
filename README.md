@@ -8,6 +8,8 @@ The idea is to create a huge tile map where similar images appear together. In t
 
 Here is a similar tool: https://ml4a.github.io/guides/ImageTSNELive/ but I didn't try it yet as it seemed fiddly to get to work regarding dependencies.
 
+If you want to reproduce my results, this tool looks more finished taking commandline arguments instead of hardcoded parameters and so on (but I also didn't try it, although I took some source code from it): https://github.com/prabodhhere/tsne-grid .
+
 Perhaps I will create a image similarity search engine as well. It should be easy to do when already given the feature vectors of the images.
 
 Here follows some previews of the result of my labour:
