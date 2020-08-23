@@ -8,10 +8,11 @@ from collections import deque
 import random
 from pprint import pprint
 import sys
+import math
 
 path = '/mnt/d/opengameart/files/ProjectUtumno_supplemental_0.png'
-path = '/mnt/d/opengameart/unpacked/Atlas_0.zip/Atlas_0/terrain_atlas.png'
-path = '/mnt/d/opengameart/files/Grasstop.png'
+#path = '/mnt/d/opengameart/unpacked/Atlas_0.zip/Atlas_0/terrain_atlas.png'
+#path = '/mnt/d/opengameart/files/Grasstop.png'
 
 
 img = Image.open(path).convert('RGBA')
@@ -150,6 +151,7 @@ def detectSize2(ar):
     #average = np.copy(ycumulative) * 0
     tries = [x for x in [4, 8, 16, 32, 48, 64, 96, 128] if x <= ar.shape[0]]
     average = np.zeros((len(tries), ar.shape[0], ar.shape[1], ar.shape[2]), np.float32)
+    nbTileDist = np.zeros((len(tries), ar.shape[2]), np.float32)
     for x in range(1, ar.shape[0]):
         for y in range(1, ar.shape[1]):
             for i, n in enumerate(tries):
@@ -158,10 +160,14 @@ def detectSize2(ar):
                     sy = (y + 1) // n - 1
                     sxn = sx * n
                     syn = sy * n
-                    average[i, sxn:(sxn + n), syn:(syn + n)] = ycumulative[x, y] - ycumulative[x - (n - 1), y - (n - 1)]
+                    average[i, sxn:(sxn + n), syn:(syn + n)] = ycumulative[x, y] - ycumulative[sxn, syn]
                     average[i, sxn:(sxn + n), syn:(syn + n)] /= n * n
                     average[i, sxn:(sxn + n), syn:(syn + n)] = \
                         np.abs(average[i, sxn:(sxn + n), syn:(syn + n)] - arf[sxn:(sxn + n), syn:(syn + n)])
+                    if sx > 0 and sy > 0:
+                        nba = ycumulative[x - n, y - n] - ycumulative[sxn - n, syn - n]
+                        nbb = ycumulative[x, y] - ycumulative[sxn, syn]
+                        nbTileDist[i] += np.abs((nba - nbb) / n * n)
             #for i, n in enumerate(tries):
             #    if x % n == 0:
             #        squares[i, x // n]
@@ -182,8 +188,15 @@ def detectSize2(ar):
 
     for i, n in enumerate(tries):
         tiles = ar.shape[0] // n * ar.shape[1] // n
+        tileDiffs = (ar.shape[0] // n - 1) * (ar.shape[1] // n - 1)
         print(str(n) + ":", ycumulative2[i, -1, -1] / tiles, np.linalg.norm(ycumulative2[i, -1, -1] / tiles))
-
+        if tileDiffs > 0:
+            print(str(n) + "D:", np.linalg.norm(ycumulative2[i, -1, -1] / tiles) / (np.linalg.norm(nbTileDist[i]) / tileDiffs))
+    print("")
+    for i, n in enumerate(tries):
+        tileDiffs = (ar.shape[0] // n - 1) * (ar.shape[1] // n - 1)
+        if tileDiffs > 0:
+            print(str(n) + ":", nbTileDist[i], np.linalg.norm(nbTileDist[i]) / tileDiffs)
     #dist = np.abs(average - arf)
     #xcumulative = np.copy(dist)
     #for x in range(1, ar.shape[0]):
@@ -192,9 +205,75 @@ def detectSize2(ar):
     #for y in range(1, ar.shape[1]):
     #    ycumulative[:, y] += ycumulative[:, y - 1]
 
+def detectSize3(ar):
+    arf = np.copy(ar).astype(np.float32) / 255.0
+    xs = np.zeros((ar.shape[0] + 1,))
+    #xs2 = np.zeros((ar.shape[0],))
+    sq = math.sqrt
+    sq = lambda x: x
+    sm = np.sum
+    #sm = lambda x: 10 * np.amax(x) + np.sum(x)
+    for x in range(1, ar.shape[0]):
+        s1 = sm(np.abs(arf[x] * np.repeat(arf[x, :, 3][:, None], 4, axis=1) - arf[x - 1] * np.repeat(arf[x - 1, :, 3][:, None], 4, axis=1)))
+        s1 = np.linalg.norm(s1)
+        #print(str(x) + "xC:", s1)
+        s2 = sm(np.repeat((1.0 - arf[x, :, 3] * arf[x - 1, :, 3])[:, None], 4, axis=1))
+        s2 = np.linalg.norm(s2)
+        #print(str(x) + "xA:", s2)
+        #print(str(x) + "x:", s1) # + s2)
+        xs[x] = s1 + s2
+    normdiv = np.amax(xs) - np.amin(xs)
+    if normdiv == 0.0:
+        normdiv = 1.0
+    xs = (xs - np.amin(xs)) / normdiv
+    xs[ar.shape[0]] = 1
+    xss = sorted(xs)
+    #xdivider = xss[int(len(xss) * 0.5)]
+    xstotal = np.sum(xs)
+    for x in range(1, ar.shape[0]+1):
+        if ar.shape[0] % x != 0:
+            continue
+        vec = xs[0:ar.shape[0]+2:x]
+        xdividx = max(0, vec.shape[0] - 1)
+        xdivider = xss[xdividx]
+        s5 = np.sum(vec > xdivider) / vec.shape[0]
+        s6 = np.sum(xs <= xdivider) / max(1, xs.shape[0] - vec.shape[0] - 1)
+        #print(str(x), xs[x], xs[x] > xdivider)
+        #print(str(x) + "x:", s4 - (xstotal - s5) / sq(max(1, xs.shape[0] - vec.shape[0] - 1)))
+        print(str(x) + "x:", s5, s5 - s6, s5, s6, xdividx, xdivider)
+    ys = np.zeros((ar.shape[1] + 1,))
+    for y in range(1, ar.shape[1]):
+        s1 = sm(np.abs(arf[:, y] * np.repeat(arf[:, y, 3][:, None], 4, axis=1) - arf[:, y - 1] * np.repeat(arf[:, y - 1, 3][:, None], 4, axis=1)))
+        s1 = np.linalg.norm(s1)
+        #print(str(y) + "yC:", s1)
+        s2 = sm(np.repeat((1.0 - arf[:, y, 3] * arf[:, y - 1, 3])[:, None], 4, axis=1))
+        s2 = np.linalg.norm(s2)
+        #print(str(x) + "yA:", s2)
+        #print(str(y) + "y:", s1) # + s2)
+        ys[y] = s1 + s2
+    normdiv = np.amax(ys) - np.amin(ys)
+    if normdiv == 0.0:
+        normdiv = 1.0
+    ys = (ys - np.amin(ys)) / normdiv
+    ys[ar.shape[1]] = 1
+    yss = sorted(ys)
+    #ydivider = yss[int(len(yss) * 0.5)]
+    ystotal = np.sum(ys)
+    for y in range(1, ar.shape[1]+1):
+        if ar.shape[1] % y != 0:
+            continue
+        vec = ys[0:ar.shape[1]+2:y]
+        ydividx = max(0, vec.shape[0] - 1)
+        ydivider = yss[ydividx]
+        s5 = np.sum(vec > ydivider) / vec.shape[0]
+        s6 = np.sum(ys <= ydivider) / max(1, ys.shape[0] - vec.shape[0] - 1)
+        #print(str(y) + "y:", s4 - (ystotal - s5) / sq(max(1, ys.shape[0] - vec.shape[0] - 1)))
+        #print(str(y), ys[y], ys[y] > ydivider)
+        print(str(y) + "y:", s5, s5 - s6, s5, s6, ydividx, ydivider)
+
 
 #ar = ar[0:32, 0:32, :]
-detectSize2(ar)
+detectSize3(ar)
 #out = splitSheet(ar)
 #Image.fromarray(out).save('out.png')
 #img.filter(ImageFilter.FIND_EDGES).save('edge.png')
