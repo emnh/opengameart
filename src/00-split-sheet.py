@@ -9,14 +9,19 @@ import random
 from pprint import pprint
 import sys
 import math
+import cv2 as cv
 
-path = '/mnt/d/opengameart/files/ProjectUtumno_supplemental_0.png'
-#path = '/mnt/d/opengameart/unpacked/Atlas_0.zip/Atlas_0/terrain_atlas.png'
-#path = '/mnt/d/opengameart/files/Grasstop.png'
+paths = [
+    ('/mnt/d/opengameart/files/ProjectUtumno_supplemental_0.png', (32, 32)),
+    ('/mnt/d/opengameart/files/grass-tiles-2-small.png', (32, 32)),
+    ('/mnt/d/opengameart/files/StoneBlocks_byVellidragon.png', (32, 32)),
+    ('/mnt/d/opengameart/files/terrain2_6.png', (64, 64)),
+    ('/mnt/d/opengameart/unpacked/Atlas_0.zip/Atlas_0/terrain_atlas.png', (32, 32)),
+    ('/mnt/d/opengameart/files/Grasstop.png', (16, 16)),
+    ('/mnt/d/opengameart/files/%23011-Nekogare%20hey.png', (1, 1))
+]
+path = paths[6][0]
 
-
-img = Image.open(path).convert('RGBA')
-ar = np.array(img)
 
 r = 0
 g = 1
@@ -205,23 +210,22 @@ def detectSize2(ar):
     #for y in range(1, ar.shape[1]):
     #    ycumulative[:, y] += ycumulative[:, y - 1]
 
-def detectSize3(ar):
+def detectSize3X(ar, fx):
     arf = np.copy(ar).astype(np.float32) / 255.0
     xs = np.zeros((ar.shape[0] + 1,))
-    #xs2 = np.zeros((ar.shape[0],))
     sq = math.sqrt
     sq = lambda x: x
     sm = np.sum
-    #sm = lambda x: 10 * np.amax(x) + np.sum(x)
     for x in range(1, ar.shape[0]):
-        s1 = sm(np.abs(arf[x] * np.repeat(arf[x, :, 3][:, None], 4, axis=1) - arf[x - 1] * np.repeat(arf[x - 1, :, 3][:, None], 4, axis=1)))
+        #s1 = sm(np.abs(arf[x] * np.repeat(arf[x, :, 3][:, None], 4, axis=1) - arf[x - 1] * np.repeat(arf[x - 1, :, 3][:, None], 4, axis=1)))
+        s1 = fx(arf, x)
         s1 = np.linalg.norm(s1)
         #print(str(x) + "xC:", s1)
         s2 = sm(np.repeat((1.0 - arf[x, :, 3] * arf[x - 1, :, 3])[:, None], 4, axis=1))
         s2 = np.linalg.norm(s2)
         #print(str(x) + "xA:", s2)
         #print(str(x) + "x:", s1) # + s2)
-        xs[x] = s1 + s2
+        xs[x] = s1 #+ s2
     normdiv = np.amax(xs) - np.amin(xs)
     if normdiv == 0.0:
         normdiv = 1.0
@@ -230,27 +234,41 @@ def detectSize3(ar):
     xss = sorted(xs)
     #xdivider = xss[int(len(xss) * 0.5)]
     xstotal = np.sum(xs)
-    for x in range(1, ar.shape[0]+1):
+    res = []
+    for x in range(4, ar.shape[0]+1):
         if ar.shape[0] % x != 0:
             continue
         vec = xs[0:ar.shape[0]+2:x]
-        xdividx = max(0, vec.shape[0] - 1)
+        xdividx = max(0, len(xss) - vec.shape[0] - 1)
+        #xdividx = max(0, len(xss) * 1 // 4 )
         xdivider = xss[xdividx]
-        s5 = np.sum(vec > xdivider) / vec.shape[0]
-        s6 = np.sum(xs <= xdivider) / max(1, xs.shape[0] - vec.shape[0] - 1)
+        #s5 = np.sum(vec > xdivider) / vec.shape[0]
+        #s6 = np.sum(xs <= xdivider) / max(1, xs.shape[0] - vec.shape[0] - 1)
+        s5 = np.sum(vec) / vec.shape[0]
+        s6 = s5
         #print(str(x), xs[x], xs[x] > xdivider)
         #print(str(x) + "x:", s4 - (xstotal - s5) / sq(max(1, xs.shape[0] - vec.shape[0] - 1)))
-        print(str(x) + "x:", s5, s5 - s6, s5, s6, xdividx, xdivider)
+        #print(str(x) + "x:", s5, s5 - s6, s5, s6, xdividx, xdivider)
+        res.append((x, s5))
+    res.sort(key=lambda x: x[1])
+    return res
+
+def detectSize3Y(ar, fy):
+    arf = np.copy(ar).astype(np.float32) / 255.0
     ys = np.zeros((ar.shape[1] + 1,))
+    sq = math.sqrt
+    sq = lambda x: x
+    sm = np.sum
     for y in range(1, ar.shape[1]):
-        s1 = sm(np.abs(arf[:, y] * np.repeat(arf[:, y, 3][:, None], 4, axis=1) - arf[:, y - 1] * np.repeat(arf[:, y - 1, 3][:, None], 4, axis=1)))
+        #s1 = sm(np.abs(arf[:, y] * np.repeat(arf[:, y, 3][:, None], 4, axis=1) - arf[:, y - 1] * np.repeat(arf[:, y - 1, 3][:, None], 4, axis=1)))
+        s1 = fy(arf, y)
         s1 = np.linalg.norm(s1)
         #print(str(y) + "yC:", s1)
         s2 = sm(np.repeat((1.0 - arf[:, y, 3] * arf[:, y - 1, 3])[:, None], 4, axis=1))
         s2 = np.linalg.norm(s2)
         #print(str(x) + "yA:", s2)
         #print(str(y) + "y:", s1) # + s2)
-        ys[y] = s1 + s2
+        ys[y] = s1 #+ s2
     normdiv = np.amax(ys) - np.amin(ys)
     if normdiv == 0.0:
         normdiv = 1.0
@@ -259,21 +277,124 @@ def detectSize3(ar):
     yss = sorted(ys)
     #ydivider = yss[int(len(yss) * 0.5)]
     ystotal = np.sum(ys)
-    for y in range(1, ar.shape[1]+1):
+    res = []
+    for y in range(4, ar.shape[1]+1):
         if ar.shape[1] % y != 0:
             continue
         vec = ys[0:ar.shape[1]+2:y]
-        ydividx = max(0, vec.shape[0] - 1)
+        ydividx = max(0, len(yss) - vec.shape[0] - 1)
+        #ydividx = max(0, len(yss) * 1 // 4)
         ydivider = yss[ydividx]
-        s5 = np.sum(vec > ydivider) / vec.shape[0]
-        s6 = np.sum(ys <= ydivider) / max(1, ys.shape[0] - vec.shape[0] - 1)
+        #s5 = np.sum(vec > ydivider) / vec.shape[0]
+        #s6 = np.sum(ys <= ydivider) / max(1, ys.shape[0] - vec.shape[0] - 1)
+        s5 = np.sum(vec) / vec.shape[0]
+        s6 = s5
         #print(str(y) + "y:", s4 - (ystotal - s5) / sq(max(1, ys.shape[0] - vec.shape[0] - 1)))
         #print(str(y), ys[y], ys[y] > ydivider)
-        print(str(y) + "y:", s5, s5 - s6, s5, s6, ydividx, ydivider)
+        #print(str(y) + "y:", s5, s5 - s6, s5, s6, ydividx, ydivider)
+        res.append((y, s5))
+    res.sort(key=lambda x: x[1])
+    return res
 
+def getHorizontalAndVertical(img):
+    if len(src.shape) != 2:
+        gray = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
+    else:
+        gray = src
+    # Apply adaptiveThreshold at the bitwise_not of gray, notice the ~ symbol
+    gray = cv.bitwise_not(gray)
+    bw = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_MEAN_C, \
+                              cv.THRESH_BINARY, 15, -2)
+    # Create the images that will use to extract the horizontal and vertical lines
+    horizontal = np.copy(bw)
+    vertical = np.copy(bw)
+    
+    # Specify size on horizontal axis
+    cols = horizontal.shape[1]
+    horizontal_size = cols // 32
+    
+    # Create structure element for extracting horizontal lines through morphology operations
+    horizontalStructure = cv.getStructuringElement(cv.MORPH_RECT, (horizontal_size, 1))
+    
+    # Apply morphology operations
+    horizontal = cv.erode(horizontal, horizontalStructure)
+    #horizontal = cv.erode(horizontal, horizontalStructure)
+    #horizontal = cv.dilate(horizontal, horizontalStructure)
+    horizontal = cv.dilate(horizontal, horizontalStructure)
+
+
+    # Show extracted horizontal lines
+    cv.imwrite('horizontal.png', horizontal)
+    
+    # Specify size on vertical axis
+    rows = vertical.shape[0]
+    verticalsize = rows // 32
+    
+    # Create structure element for extracting vertical lines through morphology operations
+    verticalStructure = cv.getStructuringElement(cv.MORPH_RECT, (1, verticalsize))
+    
+    # Apply morphology operations
+    vertical = cv.erode(vertical, verticalStructure)
+    #vertical = cv.erode(vertical, verticalStructure)
+    #vertical = cv.dilate(vertical, verticalStructure)
+    vertical = cv.dilate(vertical, verticalStructure)
+
+    cv.imwrite('horizontal.png', horizontal)
+    cv.imwrite('vertical.png', vertical)
+    cv.imwrite('horizontalAndVertical.png', horizontal + vertical)
+
+    return (horizontal, vertical)
 
 #ar = ar[0:32, 0:32, :]
-detectSize3(ar)
+img = Image.open(path).convert('RGBA')
+
+ar = np.array(img)
+
+pil_image = img.convert('RGB') * np.repeat(ar[:, :, 3][:, :, None], 3, axis=2)
+open_cv_image = np.array(pil_image)
+# Convert RGB to BGR
+open_cv_image = open_cv_image[:, :, ::-1].copy()
+#src = cv.cvtColor(open_cv_image, cv.COLOR_BGR2GRAY)
+src = open_cv_image
+x = 1
+y = 0
+ksize = 13
+dst1 = cv.Sobel(src, cv.CV_64F, x, y, ksize=ksize)
+x = 0
+y = 1
+dst2 = cv.Sobel(src, cv.CV_64F, x, y, ksize=ksize)
+dst1 = abs(dst1).astype(np.uint8) #cv.cvtColor(abs(dst1), cv.COLOR_BGR2GRAY)
+dst2 = abs(dst2).astype(np.uint8) #cv.cvtColor(abs(dst2), cv.COLOR_BGR2GRAY)
+
+
+cv.imwrite('sobelX.png', dst1)
+cv.imwrite('sobelY.png', dst2)
+
+
+#dst = np.abs(dst2)
+#dstH, _ = getHorizontalAndVertical(dst2)
+#_, dstV = getHorizontalAndVertical(dst1)
+src = cv.GaussianBlur(src, (5, 5), 1)
+Image.fromarray(src[:, :, ::-1]).save('blur.png')
+dstH, dstV = getHorizontalAndVertical(src)
+#dstH, dstV = dst1, dst2
+#dstH, dstV = (dstH + dstV, dstH + dstV)
+#ar[:, :, 0:3] = ar[:, :, 0:3] * dst[:, :, ::-1]
+#ar[:, :, 0:3] = dst[:, :, ::-1]
+img.save('out.png')
+fx = lambda ar, x: np.sum(ar[x, :, 0])
+fy = lambda ar, y: np.sum(ar[:, y, 0])
+
+for var, dst, detectSize3, f in zip(['x', 'y'], [dstV, dstH], [detectSize3X, detectSize3Y], [fx, fy]):
+    if len(dst.shape) < 3:
+        ar[:, :, 0:3] = cv.cvtColor(dst, cv.COLOR_GRAY2RGB)
+    else:
+        ar[:, :, 0:3] = dst[:, :, ::-1]
+    Image.fromarray(ar).save('out2.png')
+    res = detectSize3(ar, f)
+    for xy, val in res[-10:]:
+        print(var, xy, val)
+    print("")
 #out = splitSheet(ar)
 #Image.fromarray(out).save('out.png')
 #img.filter(ImageFilter.FIND_EDGES).save('edge.png')
