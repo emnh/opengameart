@@ -18,9 +18,11 @@ paths = [
     ('/mnt/d/opengameart/files/terrain2_6.png', (64, 64)),
     ('/mnt/d/opengameart/unpacked/Atlas_0.zip/Atlas_0/terrain_atlas.png', (32, 32)),
     ('/mnt/d/opengameart/files/Grasstop.png', (16, 16)),
-    ('/mnt/d/opengameart/files/%23011-Nekogare%20hey.png', (1, 1))
+    ('/mnt/d/opengameart/files/%23011-Nekogare%20hey.png', (1, 1)),
+    ('/mnt/d/opengameart/files/arcadArne_sheet_org_desat.png', (16, 16)),
+    ('/mnt/d/opengameart/files/Green%20Iron.png', (16, 16))
 ]
-path = paths[6][0]
+path = paths[8][0]
 
 
 r = 0
@@ -96,30 +98,35 @@ def splitSheet(ar):
     ]
     queue = np.zeros((ar.shape[0] * ar.shape[1] * len(nbs), 2), dtype=np.int16)
     d = {}
+    boundsList = []
     for x in range(ar.shape[0]):
         for y in range(ar.shape[1]):
             if not isTransparent(ar[x, y, a]):
                 bounds = bfs(queue, ar, out, seen, nbs, x, y)
+                boundsList.append(bounds)
                 w, h = (bounds[2] - bounds[0], bounds[3] - bounds[1])
-                for p in range(2, 8):
-                    n = 2 ** p
-                    # if it fits within tile
-                    if n / 2 < w < n and n / 2 < h < n and bounds[0] // n == bounds[2] // n and bounds[3] // n == bounds[1] // n:
-                        if n in d:
-                            d[n] += 1
-                        else:
-                            d[n] = 1
-                #if (w, h) in d:
-                #    d[(w, h)] += 1
-                #else:
-                #    d[(w, h)] = 1
+                #for p in range(2, 8):
+                #    n = 2 ** p
+                #    # if it fits within tile
+                #    if n / 2 < w < n and n / 2 < h < n and bounds[0] // n == bounds[2] // n and bounds[3] // n == bounds[1] // n:
+                #        if n in d:
+                #            d[n] += 1
+                #        else:
+                #            d[n] = 1
+                if w >= 4 and h >= 4:
+                    if (w, h) in d:
+                        d[(w, h)] += 1
+                    else:
+                        d[(w, h)] = 1
             else:
                 ar[x, y] = [0, 0, 0, 0]
             #for nb in nbs:
-    print("splitSheet")
-    for k, v in sorted(d.items(), key=lambda x: x[1]):
+    #print("splitSheet")
+    ds = sorted(d.items(), key=lambda x: x[1])
+    for k, v in ds:
         print(k, v)
-    return out
+    return (out, ds, bounds)
+    #return out
 
 def detectSize(ar):
     r = range(4, 65)
@@ -296,7 +303,7 @@ def detectSize3Y(ar, fy):
     res.sort(key=lambda x: x[1])
     return res
 
-def getHorizontalAndVertical(img):
+def getHorizontalAndVertical(src):
     if len(src.shape) != 2:
         gray = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
     else:
@@ -348,53 +355,65 @@ def getHorizontalAndVertical(img):
 #ar = ar[0:32, 0:32, :]
 img = Image.open(path).convert('RGBA')
 
+def tryToDetectSplitSize(img):
+    ar = np.array(img)
+    pil_image = img.convert('RGB') * np.repeat(ar[:, :, 3][:, :, None], 3, axis=2)
+    open_cv_image = np.array(pil_image)
+    # Convert RGB to BGR
+    open_cv_image = open_cv_image[:, :, ::-1].copy()
+    #src = cv.cvtColor(open_cv_image, cv.COLOR_BGR2GRAY)
+    src = open_cv_image
+    x = 1
+    y = 0
+    ksize = 13
+    dst1 = cv.Sobel(src, cv.CV_64F, x, y, ksize=ksize)
+    x = 0
+    y = 1
+    dst2 = cv.Sobel(src, cv.CV_64F, x, y, ksize=ksize)
+    dst1 = abs(dst1).astype(np.uint8) #cv.cvtColor(abs(dst1), cv.COLOR_BGR2GRAY)
+    dst2 = abs(dst2).astype(np.uint8) #cv.cvtColor(abs(dst2), cv.COLOR_BGR2GRAY)
+
+
+    cv.imwrite('sobelX.png', dst1)
+    cv.imwrite('sobelY.png', dst2)
+
+
+    #dst = np.abs(dst2)
+    #dstH, _ = getHorizontalAndVertical(dst2)
+    #_, dstV = getHorizontalAndVertical(dst1)
+    src = cv.GaussianBlur(src, (5, 5), 1)
+    Image.fromarray(src[:, :, ::-1]).save('blur.png')
+    dstH, dstV = getHorizontalAndVertical(src)
+    #dstH, dstV = dst1, dst2
+    #dstH, dstV = (dstH + dstV, dstH + dstV)
+    #ar[:, :, 0:3] = ar[:, :, 0:3] * dst[:, :, ::-1]
+    #ar[:, :, 0:3] = dst[:, :, ::-1]
+    img.save('out.png')
+    #fx = lambda ar, x: np.sum(ar[x-2:x+2, :, 0])
+    #fy = lambda ar, y: np.sum(ar[:, y-2:y+2, 0])
+    fx = lambda ar, x: np.sum(ar[x, :, 0])
+    fy = lambda ar, y: np.sum(ar[:, y, 0])
+
+    for var, dst, detectSize3, f in zip(['x', 'y'], [dstH, dstV], [detectSize3X, detectSize3Y], [fx, fy]):
+        if len(dst.shape) < 3:
+            ar[:, :, 0:3] = cv.cvtColor(dst, cv.COLOR_GRAY2RGB)
+        else:
+            ar[:, :, 0:3] = dst[:, :, ::-1]
+        Image.fromarray(ar).save('out2.png')
+        res = detectSize3(ar, f)
+        for xy, val in res[-10:]:
+            print(var, xy, val)
+        print("")
+    #out = splitSheet(ar)
+    #Image.fromarray(out).save('out.png')
+    #img.filter(ImageFilter.FIND_EDGES).save('edge.png')
+
 ar = np.array(img)
-
-pil_image = img.convert('RGB') * np.repeat(ar[:, :, 3][:, :, None], 3, axis=2)
-open_cv_image = np.array(pil_image)
-# Convert RGB to BGR
-open_cv_image = open_cv_image[:, :, ::-1].copy()
-#src = cv.cvtColor(open_cv_image, cv.COLOR_BGR2GRAY)
-src = open_cv_image
-x = 1
-y = 0
-ksize = 13
-dst1 = cv.Sobel(src, cv.CV_64F, x, y, ksize=ksize)
-x = 0
-y = 1
-dst2 = cv.Sobel(src, cv.CV_64F, x, y, ksize=ksize)
-dst1 = abs(dst1).astype(np.uint8) #cv.cvtColor(abs(dst1), cv.COLOR_BGR2GRAY)
-dst2 = abs(dst2).astype(np.uint8) #cv.cvtColor(abs(dst2), cv.COLOR_BGR2GRAY)
-
-
-cv.imwrite('sobelX.png', dst1)
-cv.imwrite('sobelY.png', dst2)
-
-
-#dst = np.abs(dst2)
-#dstH, _ = getHorizontalAndVertical(dst2)
-#_, dstV = getHorizontalAndVertical(dst1)
-src = cv.GaussianBlur(src, (5, 5), 1)
-Image.fromarray(src[:, :, ::-1]).save('blur.png')
-dstH, dstV = getHorizontalAndVertical(src)
-#dstH, dstV = dst1, dst2
-#dstH, dstV = (dstH + dstV, dstH + dstV)
-#ar[:, :, 0:3] = ar[:, :, 0:3] * dst[:, :, ::-1]
-#ar[:, :, 0:3] = dst[:, :, ::-1]
-img.save('out.png')
-fx = lambda ar, x: np.sum(ar[x, :, 0])
-fy = lambda ar, y: np.sum(ar[:, y, 0])
-
-for var, dst, detectSize3, f in zip(['x', 'y'], [dstV, dstH], [detectSize3X, detectSize3Y], [fx, fy]):
-    if len(dst.shape) < 3:
-        ar[:, :, 0:3] = cv.cvtColor(dst, cv.COLOR_GRAY2RGB)
-    else:
-        ar[:, :, 0:3] = dst[:, :, ::-1]
-    Image.fromarray(ar).save('out2.png')
-    res = detectSize3(ar, f)
-    for xy, val in res[-10:]:
-        print(var, xy, val)
-    print("")
-#out = splitSheet(ar)
-#Image.fromarray(out).save('out.png')
-#img.filter(ImageFilter.FIND_EDGES).save('edge.png')
+out, ds, boundsList = splitSheet(ar)
+s = sum(x[1] for x in ds)
+isSheet = s >= 2
+print(ds)
+if isSheet:
+    #if ds[-1] >= s // 2:
+    uniformSplittable = ds[-1][1] >= s // 2
+tryToDetectSplitSize(img)
