@@ -226,6 +226,7 @@ def detectSize3X(ar, fx):
     for x in range(1, ar.shape[0]):
         #s1 = sm(np.abs(arf[x] * np.repeat(arf[x, :, 3][:, None], 4, axis=1) - arf[x - 1] * np.repeat(arf[x - 1, :, 3][:, None], 4, axis=1)))
         s1 = fx(arf, x)
+        #print("xs1", x, s1)
         s1 = np.linalg.norm(s1)
         #print(str(x) + "xC:", s1)
         s2 = sm(np.repeat((1.0 - arf[x, :, 3] * arf[x - 1, :, 3])[:, None], 4, axis=1))
@@ -233,6 +234,8 @@ def detectSize3X(ar, fx):
         #print(str(x) + "xA:", s2)
         #print(str(x) + "x:", s1) # + s2)
         xs[x] = s1 #+ s2
+    print("xs1 avg", np.sum(xs) / xs.shape[0])
+
     normdiv = np.amax(xs) - np.amin(xs)
     if normdiv == 0.0:
         normdiv = 1.0
@@ -269,6 +272,7 @@ def detectSize3Y(ar, fy):
     for y in range(1, ar.shape[1]):
         #s1 = sm(np.abs(arf[:, y] * np.repeat(arf[:, y, 3][:, None], 4, axis=1) - arf[:, y - 1] * np.repeat(arf[:, y - 1, 3][:, None], 4, axis=1)))
         s1 = fy(arf, y)
+        #print("ys1", y, s1)
         s1 = np.linalg.norm(s1)
         #print(str(y) + "yC:", s1)
         s2 = sm(np.repeat((1.0 - arf[:, y, 3] * arf[:, y - 1, 3])[:, None], 4, axis=1))
@@ -276,6 +280,8 @@ def detectSize3Y(ar, fy):
         #print(str(x) + "yA:", s2)
         #print(str(y) + "y:", s1) # + s2)
         ys[y] = s1 #+ s2
+    print("ys1 avg", np.sum(ys) / ys.shape[0])
+
     normdiv = np.amax(ys) - np.amin(ys)
     if normdiv == 0.0:
         normdiv = 1.0
@@ -391,18 +397,43 @@ def tryToDetectSplitSize(img):
     img.save('out.png')
     #fx = lambda ar, x: np.sum(ar[x-2:x+2, :, 0])
     #fy = lambda ar, y: np.sum(ar[:, y-2:y+2, 0])
-    fx = lambda ar, x: np.sum(ar[x, :, 0])
-    fy = lambda ar, y: np.sum(ar[:, y, 0])
 
-    for var, dst, detectSize3, f in zip(['x', 'y'], [dstH, dstV], [detectSize3X, detectSize3Y], [fx, fy]):
-        if len(dst.shape) < 3:
-            ar[:, :, 0:3] = cv.cvtColor(dst, cv.COLOR_GRAY2RGB)
-        else:
-            ar[:, :, 0:3] = dst[:, :, ::-1]
+    # amount of white on line minus noise
+    fx1 = lambda ar, x: np.sum(ar[x, :, 0]) # - np.sum(abs(ar[x, :-1, 0] - ar[x, 1:, 0]))
+    fy1 = lambda ar, y: np.sum(ar[:, y, 0]) # - np.sum(abs(ar[:-1, y, 0] - ar[1:, y, 0]))
+    # amount of noise on line
+    fx2 = lambda ar, x: np.sum(abs(ar[x, :-1, 0] - ar[x, 1:, 0]))
+    fy2 = lambda ar, y: np.sum(abs(ar[:-1, y, 0] - ar[1:, y, 0]))
+
+    ar2 = np.copy(ar)
+
+    #dstV, dstH = (dstH, dstV)
+
+    for var, (dst2, f2), (dst, f), detectSize3 in zip(['x', 'y'], [(dstV, fx2), (dstH, fy2)], [(dstH, fx1), (dstV, fy1)], [detectSize3X, detectSize3Y]):
+        if True:
+            if len(dst.shape) < 3:
+                ar[:, :, 0:3] = cv.cvtColor(dst, cv.COLOR_GRAY2RGB)
+                ar2[:, :, 0:3] = cv.cvtColor(dst2, cv.COLOR_GRAY2RGB)
+            else:
+                ar[:, :, 0:3] = dst[:, :, ::-1]
+                ar2[:, :, 0:3] = dst2[:, :, ::-1]
         Image.fromarray(ar).save('out2.png')
-        res = detectSize3(ar, f)
-        for xy, val in res[-10:]:
+        res1 = detectSize3(ar, f)
+        res2 = detectSize3(ar2, f2)
+        d = {}
+        for xy, val in res1[-10:]:
             print(var, xy, val)
+            d[xy] = val
+        print("")
+        for xy, val in res2[-10:]:
+            print(var, xy, val)
+            if xy in d:
+                d[xy] += val
+            else:
+                d[xy] = val
+        print("")
+        #for xy, val in sorted(d.items(), key=lambda x: x[1]):
+        #    print(var, xy, val)
         print("")
     #out = splitSheet(ar)
     #Image.fromarray(out).save('out.png')
