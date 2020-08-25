@@ -124,8 +124,8 @@ def splitSheet(ar):
             #for nb in nbs:
     #print("splitSheet")
     ds = sorted(d.items(), key=lambda x: x[1])
-    for k, v in ds:
-        print(k, v)
+    #for k, v in ds:
+    #    print(k, v)
     return (out, ds, boundsList)
     #return out
 
@@ -442,40 +442,72 @@ def tryToDetectSplitSize(img):
     #Image.fromarray(out).save('out.png')
     #img.filter(ImageFilter.FIND_EDGES).save('edge.png')
 
-def process(path):
+def process(path, flist):
     img = Image.open(path).convert('RGBA')
     ar = np.array(img)
     out, ds, boundsList = splitSheet(ar)
     s = sum(x[1] for x in ds)
     isSheet = s >= 2
-    print(ds)
+    #print(ds)
     outdir = '/mnt/d/opengameart/sprites/'
     bname, ext = os.path.splitext(os.path.basename(path))
     if not os.path.exists(outdir):
         os.mkdir(outdir)
     ar = np.array(img)
     if isSheet:
+        k = 0
         for i, bounds in enumerate(boundsList):
             width = bounds[2] - bounds[0]
             height = bounds[3] - bounds[1]
             if width >= 8 and height >= 8 and (width < img.width * 0.8 or height < img.height * 0.8):
+                k += 1
                 sprite = ar[bounds[0]:bounds[2], bounds[1]:bounds[3]]
-                bname2 = bname + '_' + ((5 - len(str(i))) * '0') + str(i) + ext
+                bname2 = bname + '_' + ((5 - len(str(k))) * '0') + str(k) + ext
                 outname = os.path.join(outdir, bname2)
-                print("saving", outname)
+                if k == 1 or k % 100 == 0:
+                    print("saving", outname)
                 Image.fromarray(sprite).save(outname)
+        if k > 0:
+            flist.write(path + '\n')
         # if ds[-1] >= s // 2:
         # uniformSplittable = ds[-1][1] >= s // 2
     # tryToDetectSplitSize(img)
 
 def processDir(path):
     fnames = os.listdir(path)
-    for fname in fnames:
+    flistfd = open('splitsheets.txt', 'r')
+    flistdata = [x.rstrip() for x in flistfd.readlines()]
+    flistfd.close()
+    flist = open('splitsheets.txt', 'a')
+    for i, fname in enumerate(fnames):
+        if fname == 'smoke.png':
+            # oom error
+            continue
+        if fname == 'trees_mega_pack_cc_by_3_0.png':
+            # oom error
+            continue
+        if fname == 'Urban%20Character%20Pack%20large%20transparent_0.png':
+            # oom error
+            continue
+        if fname == 'Urban%20Character%20Pack%20large.png':
+            # oom error
+            continue
+        if fname == 'Urban%20Character%20Pack%20large_0.png':
+            # oom error
+            continue
         flow = fname.lower()
         if flow.endswith('png'):
             fpath = os.path.join(path, fname)
-            print("processing", fpath)
-            process(fpath)
+            if fpath in flistdata:
+                continue
+            print("processing", i, 'out of', len(fnames), 'at', fpath)
+            try:
+                process(fpath, flist)
+            except:
+                print("error")
+    flist.close()
+
+# TODO: delete unicolored "sprites"
 
 if __name__ == "__main__":
     # ar = ar[0:32, 0:32, :]
