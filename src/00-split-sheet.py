@@ -335,10 +335,6 @@ def getHorizontalAndVertical(src):
     #horizontal = cv.dilate(horizontal, horizontalStructure)
     horizontal = cv.dilate(horizontal, horizontalStructure)
 
-
-    # Show extracted horizontal lines
-    cv.imwrite('horizontal.png', horizontal)
-    
     # Specify size on vertical axis
     rows = vertical.shape[0]
     verticalsize = rows // 32
@@ -352,44 +348,48 @@ def getHorizontalAndVertical(src):
     #vertical = cv.dilate(vertical, verticalStructure)
     vertical = cv.dilate(vertical, verticalStructure)
 
-    cv.imwrite('horizontal.png', horizontal)
-    cv.imwrite('vertical.png', vertical)
-    cv.imwrite('horizontalAndVertical.png', horizontal + vertical)
+    #cv.imwrite('horizontal.png', horizontal)
+    #cv.imwrite('vertical.png', vertical)
+    #cv.imwrite('horizontalAndVertical.png', horizontal + vertical)
 
     return (horizontal, vertical)
 
-#ar = ar[0:32, 0:32, :]
-img = Image.open(path).convert('RGBA')
 
-def tryToDetectSplitSize(img):
+def getHV(img):
+    #img = img.convert('RBGA')
     ar = np.array(img)
-    pil_image = img.convert('RGB') * np.repeat(ar[:, :, 3][:, :, None], 3, axis=2)
+    pil_image = img.convert('RGB')
+    if ar.shape[2] >= 4:
+        pil_image *= np.repeat(ar[:, :, 3][:, :, None], 3, axis=2)
     open_cv_image = np.array(pil_image)
     # Convert RGB to BGR
     open_cv_image = open_cv_image[:, :, ::-1].copy()
-    #src = cv.cvtColor(open_cv_image, cv.COLOR_BGR2GRAY)
+    # src = cv.cvtColor(open_cv_image, cv.COLOR_BGR2GRAY)
     src = open_cv_image
-    x = 1
-    y = 0
-    ksize = 13
-    dst1 = cv.Sobel(src, cv.CV_64F, x, y, ksize=ksize)
-    x = 0
-    y = 1
-    dst2 = cv.Sobel(src, cv.CV_64F, x, y, ksize=ksize)
-    dst1 = abs(dst1).astype(np.uint8) #cv.cvtColor(abs(dst1), cv.COLOR_BGR2GRAY)
-    dst2 = abs(dst2).astype(np.uint8) #cv.cvtColor(abs(dst2), cv.COLOR_BGR2GRAY)
 
+    # x = 1
+    # y = 0
+    # ksize = 13
+    # dst1 = cv.Sobel(src, cv.CV_64F, x, y, ksize=ksize)
+    # x = 0
+    # y = 1
+    # dst2 = cv.Sobel(src, cv.CV_64F, x, y, ksize=ksize)
+    # dst1 = abs(dst1).astype(np.uint8) #cv.cvtColor(abs(dst1), cv.COLOR_BGR2GRAY)
+    # dst2 = abs(dst2).astype(np.uint8) #cv.cvtColor(abs(dst2), cv.COLOR_BGR2GRAY)
 
-    cv.imwrite('sobelX.png', dst1)
-    cv.imwrite('sobelY.png', dst2)
+    # cv.imwrite('sobelX.png', dst1)
+    # cv.imwrite('sobelY.png', dst2)
 
-
-    #dst = np.abs(dst2)
-    #dstH, _ = getHorizontalAndVertical(dst2)
-    #_, dstV = getHorizontalAndVertical(dst1)
+    # dst = np.abs(dst2)
+    # dstH, _ = getHorizontalAndVertical(dst2)
+    # _, dstV = getHorizontalAndVertical(dst1)
     src = cv.GaussianBlur(src, (5, 5), 1)
     Image.fromarray(src[:, :, ::-1]).save('blur.png')
     dstH, dstV = getHorizontalAndVertical(src)
+    return dstH, dstV
+
+def tryToDetectSplitSize(img):
+    ar = np.array(img)
     #dstH, dstV = dst1, dst2
     #dstH, dstV = (dstH + dstV, dstH + dstV)
     #ar[:, :, 0:3] = ar[:, :, 0:3] * dst[:, :, ::-1]
@@ -397,6 +397,8 @@ def tryToDetectSplitSize(img):
     img.save('out.png')
     #fx = lambda ar, x: np.sum(ar[x-2:x+2, :, 0])
     #fy = lambda ar, y: np.sum(ar[:, y-2:y+2, 0])
+
+    dstH, dstV = getHV(img)
 
     # amount of white on line minus noise
     fx1 = lambda ar, x: np.sum(ar[x, :, 0]) # - np.sum(abs(ar[x, :-1, 0] - ar[x, 1:, 0]))
@@ -439,12 +441,15 @@ def tryToDetectSplitSize(img):
     #Image.fromarray(out).save('out.png')
     #img.filter(ImageFilter.FIND_EDGES).save('edge.png')
 
-ar = np.array(img)
-out, ds, boundsList = splitSheet(ar)
-s = sum(x[1] for x in ds)
-isSheet = s >= 2
-print(ds)
-if isSheet:
-    #if ds[-1] >= s // 2:
-    uniformSplittable = ds[-1][1] >= s // 2
-tryToDetectSplitSize(img)
+if __name__ == "__main__":
+    # ar = ar[0:32, 0:32, :]
+    img = Image.open(path).convert('RGBA')
+    ar = np.array(img)
+    out, ds, boundsList = splitSheet(ar)
+    s = sum(x[1] for x in ds)
+    isSheet = s >= 2
+    print(ds)
+    if isSheet:
+        #if ds[-1] >= s // 2:
+        uniformSplittable = ds[-1][1] >= s // 2
+    tryToDetectSplitSize(img)
