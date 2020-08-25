@@ -10,6 +10,7 @@ from pprint import pprint
 import sys
 import math
 import cv2 as cv
+import os
 
 paths = [
     ('/mnt/d/opengameart/files/ProjectUtumno_supplemental_0.png', (32, 32)),
@@ -125,7 +126,7 @@ def splitSheet(ar):
     ds = sorted(d.items(), key=lambda x: x[1])
     for k, v in ds:
         print(k, v)
-    return (out, ds, bounds)
+    return (out, ds, boundsList)
     #return out
 
 def detectSize(ar):
@@ -441,15 +442,41 @@ def tryToDetectSplitSize(img):
     #Image.fromarray(out).save('out.png')
     #img.filter(ImageFilter.FIND_EDGES).save('edge.png')
 
-if __name__ == "__main__":
-    # ar = ar[0:32, 0:32, :]
+def process(path):
     img = Image.open(path).convert('RGBA')
     ar = np.array(img)
     out, ds, boundsList = splitSheet(ar)
     s = sum(x[1] for x in ds)
     isSheet = s >= 2
     print(ds)
+    outdir = '/mnt/d/opengameart/sprites/'
+    bname, ext = os.path.splitext(os.path.basename(path))
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
+    ar = np.array(img)
     if isSheet:
-        #if ds[-1] >= s // 2:
-        uniformSplittable = ds[-1][1] >= s // 2
-    tryToDetectSplitSize(img)
+        for i, bounds in enumerate(boundsList):
+            width = bounds[2] - bounds[0]
+            height = bounds[3] - bounds[1]
+            if width >= 8 and height >= 8 and (width < img.width * 0.8 or height < img.height * 0.8):
+                sprite = ar[bounds[0]:bounds[2], bounds[1]:bounds[3]]
+                bname2 = bname + '_' + ((5 - len(str(i))) * '0') + str(i) + ext
+                outname = os.path.join(outdir, bname2)
+                print("saving", outname)
+                Image.fromarray(sprite).save(outname)
+        # if ds[-1] >= s // 2:
+        # uniformSplittable = ds[-1][1] >= s // 2
+    # tryToDetectSplitSize(img)
+
+def processDir(path):
+    fnames = os.listdir(path)
+    for fname in fnames:
+        flow = fname.lower()
+        if flow.endswith('png'):
+            fpath = os.path.join(path, fname)
+            print("processing", fpath)
+            process(fpath)
+
+if __name__ == "__main__":
+    # ar = ar[0:32, 0:32, :]
+    processDir('/mnt/d/opengameart/files')
