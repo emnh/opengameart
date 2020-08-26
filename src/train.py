@@ -5,7 +5,7 @@ import random
 import os
 import tensorflow as tf
 import numpy as np
-import split_sheet
+#import split_sheet
 from PIL import Image
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -405,7 +405,7 @@ if __name__ == '__main__':
     #test()
     x_train, y_train, x_test, y_test = createData()
     #ml(x_train, y_train, x_test, y_test)
-    load = True
+    load = False
     model = ml2(load, x_train, y_train, x_test, y_test)
     if len(sys.argv) > 1:
         path = sys.argv[1]
