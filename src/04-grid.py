@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import numpy as np
-#from lapjv import lapjv
 from PIL import Image
 #from tensorflow.python.keras.preprocessing import image
 import json
@@ -11,28 +10,38 @@ import random
 import sys
 import subprocess
 import multiprocessing
+from glob import glob
 from scipy.spatial.distance import cdist
 #from cuml.dask.neighbors import NearestNeighbors
 #import cudf
 #from cuml.neighbors import NearestNeighbors
 
+Image.MAX_IMAGE_PIXELS = None
+
 # from https://github.com/prabodhhere/tsne-grid/blob/master/tsne_grid.py
 # scales to around 10k in 10 min
 # TODO: needs updating
 def save_tsne_grid(img_collection, X_2d, out_res, out_dim):
+    from lapjv import lapjv
+    toplot = out_dim * out_dim
     grid = np.dstack(np.meshgrid(np.linspace(0, 1, out_dim), np.linspace(0, 1, out_dim))).reshape(-1, 2)
-    cost_matrix = cdist(grid, X_2d, "sqeuclidean").astype(np.float32)
+    cost_matrix = cdist(grid, X_2d[:toplot], "sqeuclidean").astype(np.float32)
     cost_matrix = cost_matrix * (100000 / cost_matrix.max())
     row_asses, col_asses, _ = lapjv(cost_matrix)
     grid_jv = grid[col_asses]
-    out = np.ones((out_dim*out_res, out_dim*out_res, 4))
+    out = np.zeros((out_dim*out_res, out_dim*out_res, 4), np.uint8)
 
-    for pos, img in zip(grid_jv, img_collection[0:to_plot]):
+    for pos, i in zip(grid_jv, range(toplot)):
+        x2, y2 = i % (img_collection.shape[0] // out_res), i // (img_collection.shape[1] // out_res)
+        h_range2 = x2 * out_res
+        w_range2 = y2 * out_res
+        #print("hmmmmm", i, x2, y2, h_range2, w_range2)
+        img = img_collection[h_range2:h_range2 + out_res, w_range2:w_range2 + out_res, :]
+
         h_range = int(np.floor(pos[0]* (out_dim - 1) * out_res))
         w_range = int(np.floor(pos[1]* (out_dim - 1) * out_res))
-        out[h_range:h_range + out_res, w_range:w_range + out_res]  = np.array(img) #[:,:,0:3]
+        out[h_range:h_range + out_res, w_range:w_range + out_res] = img
 
-    #im = image.array_to_img(out)
     im = Image.fromarray(out)
     im.save(out_dir + out_name, quality=100)
 
@@ -63,7 +72,7 @@ def computeGrid2(img_collection, X_2d, out_res, out_dim):
     #xs = sorted(remaining, key=lambda x: x[0])
     #ys = sorted(remaining, key=lambda x: x[1])
     grid = np.zeros((out_dim, out_dim), np.bool)
-    out = np.ones((out_dim * out_res, out_dim * out_res, 4), dtype=np.uint8)
+    out = np.zeros((out_dim * out_res, out_dim * out_res, 4), dtype=np.uint8)
 
     circles = []
     #circlesSeen = {}
@@ -89,8 +98,9 @@ def computeGrid2(img_collection, X_2d, out_res, out_dim):
         xnormal.append((i, dx, dy))
     xcircles.sort()
     xcircles = [(i, x, y) for _, _, i, x, y in xcircles]
+
     #random.shuffle(xnormal)
-    #xnormal.sort()
+    #xnormal.sort(key=lambda x: (x[1], x[2]))
     #for r in range(out_dim):
     #    done = False
     #    for theta in range(360):
@@ -103,13 +113,18 @@ def computeGrid2(img_collection, X_2d, out_res, out_dim):
     #squircle = []
     #for k, (i, x, y) in enumerate(xcircles):
 
+    #def f(args):
+    #    k, i, x, y = args
 
     for k, (i, x, y) in enumerate(xnormal):
         if k % 100 == 0:
-            print("i", k, x, y, len(X_2d))
+            print("k", k, x, y, len(X_2d))
+        #x, y = X_2d[i]
+        #if k % 100 == 0:
+        #    print("k", k, x, y, len(X_2d))
 
-        if random.random() > 0.5:
-            continue
+        #if random.random() > 0.5:
+        #    continue
 
         if False:
             #u, v = (math.sqrt(x * x + y * y), math.atan2(y, x))
@@ -131,29 +146,41 @@ def computeGrid2(img_collection, X_2d, out_res, out_dim):
             y = max(y, 0.0)
             y = min(y, 1.0)
 
-        x = int(np.floor(2 * x * out_dim)) % out_dim  # / out_dim
-        y = int(np.floor(2 * y * out_dim)) % out_dim  # / out_dim
-        #x = int(np.floor(x * out_dim))# / out_dim
-        #y = int(np.floor(y * out_dim))# / out_dim
-        done = False
-        for _, _, dx, dy in circles:
-            if 0 <= x + dx < out_dim and 0 <= y + dy < out_dim and grid[x + dx, y + dy] == False:
-                x = x + dx
-                y = y + dy
-                done = True
-                break
-        if not done:
-            continue
-        grid[x, y] = True
-        x /= out_dim
-        y /= out_dim
-        h_range = int(np.floor(x * (out_dim - 1) * out_res))
-        w_range = int(np.floor(y * (out_dim - 1) * out_res))
+        #x = int(np.floor(x * out_dim)) % out_dim  # / out_dim
+        #y = int(np.floor(y * out_dim)) % out_dim  # / out_dim
 
-        x2, y2 = i % out_dim, i // out_dim
+        od2 = out_dim - 1
+
+        x = int(np.floor(x * od2))# / out_dim
+        y = int(np.floor(y * od2))# / out_dim
+        print("xy", x, y)
+        if False:
+            done = False
+            for _, _, dx, dy in circles:
+                if 0 <= x + dx < out_dim and 0 <= y + dy < out_dim and grid[x + dx, y + dy] == False:
+                    x = x + dx
+                    y = y + dy
+                    done = True
+                    break
+            if not done:
+                continue
+            grid[x, y] = True
+
+        # XXXXXXXXXXXXXXXXXXXXXXXX
+        #x, y = i % (img_collection.shape[0] // out_res), i // (img_collection.shape[1] // out_res)
+
+        x /= od2
+        y /= od2
+
+        h_range = int(np.floor(x * od2 * out_res))
+        w_range = int(np.floor(y * od2 * out_res))
+
+        #x2, y2 = i % out_dim, i // out_dim
+        x2, y2 = i % (img_collection.shape[0] // out_res), i // (img_collection.shape[1] // out_res)
+        #print(out_dim, img_collection.shape[0], img_collection.shape[1])
         h_range2 = x2 * out_res
         w_range2 = y2 * out_res
-        img = img_collection[h_range2:h_range2 + out_res, w_range:w_range + out_res, :]
+        img = img_collection[h_range2:h_range2 + out_res, w_range2:w_range2 + out_res, :]
         out[h_range:h_range + out_res, w_range:w_range + out_res, :] = img
     im = Image.fromarray(out)
     im.save(out_dir + out_name, quality=100)
@@ -225,37 +252,46 @@ def computeGrid(img_collection, X_2d, out_res, out_dim):
 
 def readXY():
     embeddings = json.loads(open('embeddings.txt').read())
-    minx = 0.0
+    minx = 1.0e20
     maxx = 0.0
-    miny = 0.0
+    miny = 1.0e20
     maxy = 0.0
     l = []
-    for embedding in embeddings:
-        x, y = embedding
-        minx = min(minx, x)
-        maxx = max(maxx, x)
-        miny = min(miny, y)
-        maxy = max(maxy, y)
+
+    xs = sorted(embeddings, key=lambda x: x[0])
+    ys = sorted(embeddings, key=lambda x: x[1])
+    minx, maxx = xs[3][0], xs[-3][0]
+    miny, maxy = ys[3][1], ys[-3][1]
+    #for x, y in embeddings:
+    #    if x < minx or y < miny:
+    #        print("xy", x, y)
+    #    minx = min(minx, x)
+    #    maxx = max(maxx, x)
+    #    miny = min(miny, y)
+    #    maxy = max(maxy, y)
+
+    print("minmax", minx, maxx, miny, maxy)
 
     tw = (maxx - minx)
     th = (maxy - miny)
 
     l = np.zeros((to_plot, 2))
-    for i, embedding in enumerate(embeddings[0:to_plot]):
-        x, y = embedding
+    for i, (x, y) in enumerate(embeddings[0:to_plot]):
         x -= minx
         y -= miny
         top = x / tw
         left = y / th
+        top = min(1, max(0, top))
+        left = min(1, max(0, left))
         l[i, 0] = top
         l[i, 1] = left
         #l.append([x, y])
 
     return l
 
-def readImages(out_res):
+def readImages(image_np_pattern, out_res):
     #lines = open('opengameart-files/files-list.txt').readlines()
-    files = os.listdir('predict')
+    files = glob(image_np_pattern)
     files.sort()
     #outfd = open('tsne.html', 'w')
     imgs = []
@@ -277,8 +313,7 @@ def readImages(out_res):
     return imgs
 
 def prepareImages(img_collection, out_dim, out_res):
-    # TODO: out_res in dumpfile name
-    dumpfile = 'imagedump.png'
+    dumpfile = 'imagedump' + str(out_res) + 'x' + str(out_res) + '.png'
     if not os.path.exists(dumpfile):
         out = np.zeros((out_dim * out_res, out_dim * out_res, 4), dtype=np.uint8)
         k = 0
@@ -305,19 +340,22 @@ def prepareImages(img_collection, out_dim, out_res):
         im = Image.fromarray(out)
         im.save(dumpfile, quality=100)
     else:
-        out = Image.open(dumpfile).convert('RGBA')
+        out = np.array(Image.open(dumpfile).convert('RGBA'), np.uint8)
     # out = np.frombuffer(dumpfile).reshape((out_dim * out_res, out_dim * out_res, 4), dtype=np.uint8)
     return out
 
 out_dir = './'
-out_name = 'gridtsne12.png'
+out_name = 'gridtsne14.png'
 out_res = 32
-out_dim = math.ceil(math.sqrt(len(os.listdir('predict'))))
+image_np_pattern = '/mnt/d/opengameart/sprites/*.np'
+out_dim = math.ceil(math.sqrt(len(glob(image_np_pattern))))
 to_plot = np.square(out_dim)
-img_collection = readImages(out_res)[0:to_plot]
+img_collection = readImages(image_np_pattern, out_res)[0:to_plot]
 images = prepareImages(img_collection, out_dim, out_res)
-#X_2d = readXY()[0:to_plot]
-#computeGrid2(images, X_2d, out_res, out_dim)
+X_2d = readXY()[0:to_plot]
+computeGrid2(images, X_2d, out_res, out_dim)
+#out_dim = 32
+#save_tsne_grid(images, X_2d, out_res, out_dim)
 
 #print(X_2d.shape)
 #save_tsne_grid(img_collection, X_2d, out_res, out_dim)
