@@ -7,19 +7,25 @@ import json
 import os
 
 print('reading data')
-files = os.listdir('predict')
-#files = files[:20000]
-data = np.zeros((len(files), 4096))
-for i, file in enumerate(files):
-    fpath = os.path.join('predict', file)
-    if os.stat(fpath).st_size == 16384:
-        fd = open(fpath, 'rb')
-        d = np.frombuffer(fd.read(), np.float32)
-        fd.close()
-        data[i] = d
-    else:
-        print("error on file: ", file)
-print(data.shape)
+concatted = True
+if not concatted:
+    files = os.listdir('predict')
+    data = np.zeros((len(files), 4096))
+    for i, file in enumerate(files):
+        fpath = os.path.join('predict', file)
+        if os.stat(fpath).st_size == 16384:
+            fd = open(fpath, 'rb')
+            d = np.frombuffer(fd.read(), np.float32)
+            fd.close()
+            data[i] = d
+        else:
+            print("error on file: ", file)
+    print(data.shape)
+else:
+    data = np.fromfile('predict.out', np.float32)
+    data = data.reshape((-1, 4096))
+    print(data.shape)
+    sys.exit()
 #lines = open('opengameart-files/files-list.txt').readlines()
 #for line in lines:
 #    d = json.loads(line.rstrip())
