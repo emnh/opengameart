@@ -1,5 +1,5 @@
 #!/bin/bash
-cd predict &&
-find . -maxdepth 1 -type f -print0 -name \*.np |
+#cd predict &&
+find /mnt/d/opengameart/unpacked -type f -name \*.np -print0 |
   sort -z |
-  xargs -0 cat -- >>../predict.out
+  xargs -0 cat -- >> predict.out
