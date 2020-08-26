@@ -1,8 +1,12 @@
+#!/usr/bin/env python3
+
 import numpy as np
 from lapjv import lapjv
 from PIL import Image
 from tensorflow.python.keras.preprocessing import image
 import json
+import os
+import math
 from scipy.spatial.distance import cdist
 
 # from https://github.com/prabodhhere/tsne-grid/blob/master/tsne_grid.py
@@ -23,7 +27,7 @@ def save_tsne_grid(img_collection, X_2d, out_res, out_dim):
     im.save(out_dir + out_name, quality=100)
 
 def readXY():
-    embeddings = json.loads(open('opengameart-files/embeddings.txt').read())
+    embeddings = json.loads(open('embeddings.txt').read())
     minx = 0.0
     maxx = 0.0
     miny = 0.0
@@ -53,13 +57,15 @@ def readXY():
     return l
 
 def readImages(out_res):
-    lines = open('opengameart-files/files-list.txt').readlines()
-    outfd = open('tsne.html', 'w')
+    #lines = open('opengameart-files/files-list.txt').readlines()
+    files = os.listdir('predict')
+    #outfd = open('tsne.html', 'w')
     imgs = []
-    for line in lines[0:to_plot]:
-        d = json.loads(line.rstrip())
-        spath = d["path"]
-        path = spath.replace("/opengameart/files/", "/mnt/d/opengameart/files64/")
+    for file in files[0:to_plot]:
+        #d = json.loads(line.rstrip())
+        #spath = d["path"]
+        #path = spath.replace("/opengameart/files/", "/mnt/d/opengameart/files64/")
+        path = os.path.join('/mnt/d/opengameart/sprites', file[:-len('.np')])
         try:
             imgs.append(Image.open(path).resize(size=(out_res, out_res)))
             error = False
@@ -75,7 +81,7 @@ def readImages(out_res):
                 print("Error loading image: " + path)
         if error:
             imgs.append(Image.open(path).resize(size=(out_res, out_res)))
-    for x in range(len(lines), to_plot):
+    for x in range(len(files), to_plot):
         path = 'blank.png'
         imgs.append(Image.open(path).resize(size=(out_res, out_res)))
     for i, img in enumerate(imgs):
@@ -86,7 +92,7 @@ def readImages(out_res):
 out_dir = './'
 out_name = 'gridtsne.png'
 out_res = 64
-out_dim = 100
+out_dim = math.ceil(math.sqrt(len(os.listdir('predict'))))
 to_plot = np.square(out_dim)
 img_collection = readImages(out_res)[0:to_plot]
 X_2d = readXY()[0:to_plot]

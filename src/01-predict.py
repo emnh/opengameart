@@ -32,22 +32,32 @@ def loadImage(img_path):
 #feat_extractor.summary()
 
 #if len(sys.argv) > 1:
-path = '/mnt/d/opengameart/files'
-prevfd = open('files-list.txt')
-prevdata = prevfd.read()
-prevfd.close()
-outfd = open('files-list.txt', 'a')
+path = '/mnt/d/opengameart/sprites'
+#prevfd = open('files-list.txt')
+outdir = 'predict'
+if not os.path.exists(outdir):
+    os.mkdir(outdir)
+#prevdata = prevfd.read()
+#d = {}
+#for x in prevdata:
+#    d[x] = True
+#prevdata = d
+#prevfd.close()
+#outfd = open('files-list.txt', 'a')
 start = time.time()
 i = 0
+batch = []
 for fname in os.listdir(path):
     flow = fname.lower()
     if not (flow.endswith('.png') or flow.endswith('.jpg')):
         continue
     img_path = os.path.join(path, fname)
-    if "\"" + img_path + "\"" in prevdata:
-        print("Already got "+ img_path)
+    #if "\"" + img_path + "\"" in prevdata:
+        #print("Already got "+ img_path)
+    #    continue
+    outpath = os.path.join(outdir, fname + '.np')
+    if os.path.exists(outpath):
         continue
-    i += 1
     try:
         x = loadImage(img_path)
     except:
@@ -56,15 +66,31 @@ for fname in os.listdir(path):
     #predictions = model.predict(x)
     #for _, pred, prob in decode_predictions(predictions)[0]:
     #    print("predicted %s with probability %0.3f" % (pred, prob))
-    features = feat_extractor.predict(x)
-    flist = features[0].tolist()
-    end = time.time()
-    d = {
-        "path": img_path,
-        "features": flist
-    }
-    outfd.write(json.dumps(d) + "\n")
-    #print(features.shape)
-    if i % 10 == 0:
+    if len(batch) < 20:
+        batch.append([outpath, x])
+        i += 1
+    else:
+        #xs = np.shape((len(batch)))
+        #print(x.shape)
+        xs = np.zeros((len(batch), 224, 224, 3))
+        for j, x in enumerate(batch):
+            xs[j] = x[1][0]
+        features = feat_extractor.predict(xs)
+        #flist = features[0].tolist()
+        end = time.time()
+        #d = {
+        #    "path": img_path,
+        #    "features": flist
+        #}
+        #outfd.write(json.dumps(d) + "\n")
+        #print(features.shape)
+        for (outpath2, x), feature in zip(batch, features):
+            #print(".", end="")
+            fd = open(outpath2, 'wb')
+            fd.write(feature.ravel().tobytes())
+            fd.close()
+            #print(features.shape)
+        #print("")
+        #if i % 10 == 0:
         print(str((end - start) / i) + " s per image. " + str(i) + " images: file " + fname)
-outfd.close()
+        batch = []
