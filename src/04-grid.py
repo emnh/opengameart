@@ -59,6 +59,7 @@ def readXY():
 def readImages(out_res):
     #lines = open('opengameart-files/files-list.txt').readlines()
     files = os.listdir('predict')
+    files.sort()
     #outfd = open('tsne.html', 'w')
     imgs = []
     for file in files[0:to_plot]:
