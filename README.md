@@ -42,3 +42,22 @@ Source code is at "src". Sorry for lots of hard coded details.
  - Perhaps look into UMAP:
   - https://arxiv.org/abs/1802.03426
   - https://github.com/lmcinnes/umap
+
+# Software
+
+I am using WSL 2 on Windows. It was a pain to install all the software. 
+First had to get experiment dev channel Windows.
+Then install NVIDIA cuda driver.
+I tried with docker, and it worked, but the non-persistent environment bugged me.
+Then I was mixing and matching tensorflow packages in pip, but didn't work with cuda 11 which was the easiest to get from the web page.
+So in the end I went with anaconda. It's really slow to compute compatible packages, but it works well.
+
+```
+wget https://repo.anaconda.com/archive/Anaconda3-2020.07-Linux-x86_64.sh
+./Anaconda3-2020.07-Linux-x86_64.sh
+conda init
+conda install tensorflow
+conda install cudnn
+conda install tensorflow-gpu
+conda install -c rapidsai-nightly -c nvidia -c conda-forge -c defaults rapids=0.15 python=3.8 cudatoolkit=10.1
+```
