@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import sys
-sys.path += ['/mnt/d/dev/opengameart/bhtsne']
-import bhtsne
+#sys.path += ['/mnt/d/dev/opengameart/bhtsne']
+#import bhtsne
 import numpy as np
 import json
 import os
+from cuml import TSNE
 
 print('reading data')
 concatted = True
@@ -25,7 +26,7 @@ else:
     data = np.fromfile('predict.out', np.float32)
     data = data.reshape((-1, 4096))
     print(data.shape)
-    sys.exit()
+    #sys.exit()
 #lines = open('opengameart-files/files-list.txt').readlines()
 #for line in lines:
 #    d = json.loads(line.rstrip())
@@ -34,7 +35,9 @@ else:
 #print(data.shape)
 
 print('computing tsne embedding')
-embedding_array = bhtsne.run_bh_tsne(data, initial_dims=data.shape[1], verbose=True)
+#embedding_array = bhtsne.run_bh_tsne(data, initial_dims=data.shape[1], verbose=True)
+tsne = TSNE(n_components = 2)
+embedding_array = tsne.fit_transform(data)
 outfd = open('embeddings.txt', 'w')
 outfd.write(json.dumps(embedding_array.tolist()))
 outfd.close()
