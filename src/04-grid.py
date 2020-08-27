@@ -12,6 +12,8 @@ import subprocess
 import multiprocessing
 from glob import glob
 from scipy.spatial.distance import cdist
+
+import matplotlib.pyplot as plt
 #from cuml.dask.neighbors import NearestNeighbors
 #import cudf
 #from cuml.neighbors import NearestNeighbors
@@ -66,94 +68,71 @@ def readImage(args):
         print("Error loading image: " + path)
     return f('../blank.png')
 
+def blah():
+    if False:
+        # u, v = (math.sqrt(x * x + y * y), math.atan2(y, x))
+        u, v = x - 0.5, y - 0.5
+        theta = math.atan2(v, u)
+        r = math.sqrt(u * u + v * v)
+        r = 0.5 * r / maxr
+        u, v = min(r, 1) * math.cos(theta), min(r, 1) * math.sin(theta)
+
+        # https://stackoverflow.com/questions/13211595/how-can-i-convert-coordinates-on-a-circle-to-coordinates-on-a-square
+        x = 0.5 * math.sqrt(2 + u * u - v * v + 2 * u * math.sqrt(2)) - 0.5 * math.sqrt(
+            2 + u * u - v * v - 2 * u * math.sqrt(2))
+        y = 0.5 * math.sqrt(2 - u * u + v * v + 2 * v * math.sqrt(2)) - 0.5 * math.sqrt(
+            2 - u * u + v * v - 2 * v * math.sqrt(2))
+        x = x + 0.5
+        y = y + 0.5
+        if x < 0 or x > 1 or y < 0 or y > 1:
+            print("squircle", u, v, x, y)
+        x = max(x, 0.0)
+        x = min(x, 1.0)
+        y = max(y, 0.0)
+        y = min(y, 1.0)
 
 # approximate hacky solution, scales more (hopefully 200k)
-def computeGrid2(img_collection, X_2d, out_res, out_dim):
+def computeGrid2(imageColors, bigImage, X_2d, out_res, out_dim):
     #xs = sorted(remaining, key=lambda x: x[0])
     #ys = sorted(remaining, key=lambda x: x[1])
     grid = np.zeros((out_dim, out_dim), np.bool)
-    out = np.zeros((out_dim * out_res, out_dim * out_res, 4), dtype=np.uint8)
+    out2 = np.zeros((out_dim * out_res, out_dim * out_res, 4), dtype=np.uint8)
 
-    circles = []
-    #circlesSeen = {}
-    for dx in range(out_dim):
-        for dy in range(out_dim):
-            cx = dx - out_dim // 2
-            cy = dy - out_dim // 2
-            theta = math.atan2(cy, cx)
-            r = math.sqrt(cx * cx + cy * cy)
-            circles.append((r, theta, cx, cy))
-    circles.sort()
+    #circles = []
+    #for dx in range(out_dim):
+    #    for dy in range(out_dim):
+    #        cx = dx - out_dim // 2
+    #        cy = dy - out_dim // 2
+    #        theta = math.atan2(cy, cx)
+    #        r = math.sqrt(cx * cx + cy * cy)
+    #        circles.append((r, theta, cx, cy))
+    #circles.sort()
 
-    xnormal = []
-    xcircles = []
-    maxr = 0
-    for i, (dx, dy) in enumerate(X_2d):
-        cx = dx - 0.5
-        cy = dy - 0.5
-        theta = math.atan2(cy, cx)
-        r = math.sqrt(cx * cx + cy * cy)
-        maxr = max(r, maxr)
-        xcircles.append((r, theta, i, dx, dy))
-        xnormal.append((i, dx, dy))
-    xcircles.sort()
-    xcircles = [(i, x, y) for _, _, i, x, y in xcircles]
+    #xnormal = []
+    #xcircles = []
+    #maxr = 0
+    #for i, (dx, dy) in enumerate(X_2d):
+    #    cx = dx - 0.5
+    #    cy = dy - 0.5
+    #    theta = math.atan2(cy, cx)
+    #    r = math.sqrt(cx * cx + cy * cy)
+    #    maxr = max(r, maxr)
+    #    xcircles.append((r, theta, i, dx, dy))
+    #    xnormal.append((i, dx, dy))
+    #xcircles.sort()
+    #xcircles = [(i, x, y) for _, _, i, x, y in xcircles]
 
-    #random.shuffle(xnormal)
-    #xnormal.sort(key=lambda x: (x[1], x[2]))
-    #for r in range(out_dim):
-    #    done = False
-    #    for theta in range(360):
-    #        x = int(r * math.cos(theta))
-    #        y = int(r * math.sin(theta))
-    #        if not (x, y) in circlesSeen:
-    #            circlesSeen[(x, y)] = True
-    #            circles.append((x, y))
-
-    #squircle = []
-    #for k, (i, x, y) in enumerate(xcircles):
-
-    #def f(args):
-    #    k, i, x, y = args
-
-    for k, (i, x, y) in enumerate(xnormal):
+    #for k, (i, x, y) in enumerate(xnormal):
+    for k, i in enumerate(range(to_plot)):
+        x, y = X_2d[i]
         if k % 100 == 0:
             print("k", k, x, y, len(X_2d))
-        #x, y = X_2d[i]
-        #if k % 100 == 0:
-        #    print("k", k, x, y, len(X_2d))
 
-        #if random.random() > 0.5:
-        #    continue
+        od2 = out_dim
 
-        if False:
-            #u, v = (math.sqrt(x * x + y * y), math.atan2(y, x))
-            u, v = x - 0.5, y - 0.5
-            theta = math.atan2(v, u)
-            r = math.sqrt(u * u + v * v)
-            r = 0.5 * r / maxr
-            u, v = min(r, 1) * math.cos(theta), min(r, 1) * math.sin(theta)
+        x = int(np.floor(x * od2)) % od2
+        y = int(np.floor(y * od2)) % od2
 
-            # https://stackoverflow.com/questions/13211595/how-can-i-convert-coordinates-on-a-circle-to-coordinates-on-a-square
-            x = 0.5 * math.sqrt(2 + u * u - v * v + 2 * u * math.sqrt(2)) - 0.5 * math.sqrt(2 + u * u - v * v - 2 * u * math.sqrt(2))
-            y = 0.5 * math.sqrt(2 - u * u + v * v + 2 * v * math.sqrt(2)) - 0.5 * math.sqrt(2 - u * u + v * v - 2 * v * math.sqrt(2))
-            x = x + 0.5
-            y = y + 0.5
-            if x < 0 or x > 1 or y < 0 or y > 1:
-                print("squircle", u, v, x, y)
-            x = max(x, 0.0)
-            x = min(x, 1.0)
-            y = max(y, 0.0)
-            y = min(y, 1.0)
-
-        #x = int(np.floor(x * out_dim)) % out_dim  # / out_dim
-        #y = int(np.floor(y * out_dim)) % out_dim  # / out_dim
-
-        od2 = out_dim - 1
-
-        x = int(np.floor(x * od2))# / out_dim
-        y = int(np.floor(y * od2))# / out_dim
-        print("xy", x, y)
         if False:
             done = False
             for _, _, dx, dy in circles:
@@ -166,23 +145,26 @@ def computeGrid2(img_collection, X_2d, out_res, out_dim):
                 continue
             grid[x, y] = True
 
-        # XXXXXXXXXXXXXXXXXXXXXXXX
-        #x, y = i % (img_collection.shape[0] // out_res), i // (img_collection.shape[1] // out_res)
+        if grid[x, y]:
+            continue
+        grid[x, y] = True
 
-        x /= od2
-        y /= od2
+        h_range = int(np.floor(x * out_res))
+        w_range = int(np.floor(y * out_res))
 
-        h_range = int(np.floor(x * od2 * out_res))
-        w_range = int(np.floor(y * od2 * out_res))
-
-        #x2, y2 = i % out_dim, i // out_dim
-        x2, y2 = i % (img_collection.shape[0] // out_res), i // (img_collection.shape[1] // out_res)
-        #print(out_dim, img_collection.shape[0], img_collection.shape[1])
+        x2, y2 = i % (bigImage.shape[0] // out_res), i // (bigImage.shape[1] // out_res)
         h_range2 = x2 * out_res
         w_range2 = y2 * out_res
-        img = img_collection[h_range2:h_range2 + out_res, w_range2:w_range2 + out_res, :]
-        out[h_range:h_range + out_res, w_range:w_range + out_res, :] = img
-    im = Image.fromarray(out)
+        img = np.copy(bigImage[h_range2:h_range2 + out_res, w_range2:w_range2 + out_res, :])
+        out2[h_range:h_range + out_res, w_range:w_range + out_res, :] = img
+        #color = imageColors[i]
+        #out2[h_range:h_range + out_res, w_range:w_range + out_res, 0] = color[0]
+        #out2[h_range:h_range + out_res, w_range:w_range + out_res, 1] = color[1]
+        #out2[h_range:h_range + out_res, w_range:w_range + out_res, 2] = color[2]
+        #out2[h_range:h_range + out_res, w_range:w_range + out_res, 3] = color[3]
+
+
+    im = Image.fromarray(out2)
     im.save(out_dir + out_name, quality=100)
     pass
 
@@ -258,10 +240,34 @@ def readXY():
     maxy = 0.0
     l = []
 
+    embeddings = [[x, y, i] for i, (x, y) in enumerate(embeddings)]
+
+    cut = 100
+
+    xs = sorted(embeddings, key=lambda x: x[0])
+    #embeddings = xs
+    zeroes = []
+    for k in range(cut):
+        i = xs[k][2]
+        zeroes.append(i)
+    ys = sorted(embeddings, key=lambda x: x[1])
+    #embeddings = ys
+    for k in range(cut):
+        i = ys[k][2]
+        zeroes.append(i)
+
+    # XXX: made a bug that skipped every 13th image
+    print("warning: skipping every 13th to compensate for bug")
+    embeddings = [x for i, x in enumerate(embeddings) if i % 13 != 0]
+
+    #for i in range(0, len(embeddings), 13):
+    #    zeroes.append(i)
+
     xs = sorted(embeddings, key=lambda x: x[0])
     ys = sorted(embeddings, key=lambda x: x[1])
-    minx, maxx = xs[3][0], xs[-3][0]
-    miny, maxy = ys[3][1], ys[-3][1]
+
+    minx, maxx = xs[cut][0], xs[-cut][0]
+    miny, maxy = ys[cut][1], ys[-cut][1]
     #for x, y in embeddings:
     #    if x < minx or y < miny:
     #        print("xy", x, y)
@@ -276,20 +282,27 @@ def readXY():
     th = (maxy - miny)
 
     l = np.zeros((to_plot, 2))
-    for i, (x, y) in enumerate(embeddings[0:to_plot]):
+    for i, (x, y, _) in enumerate(embeddings[0:to_plot]):
         x -= minx
         y -= miny
         top = x / tw
         left = y / th
         top = min(1, max(0, top))
         left = min(1, max(0, left))
+        #top += math.sqrt(abs(top - 0.5)) * math.copysign(1, top - 0.5) + 0.5
+        #left += math.sqrt(abs(left - 0.5)) * math.copysign(1, left - 0.5) + 0.5
         l[i, 0] = top
         l[i, 1] = left
         #l.append([x, y])
 
+    for i in zeroes:
+        l[i][0] = 0
+        l[i][1] = 0
+        l[-i][0] = 0
+        l[-i][1] = 0
     return l
 
-def readImages(image_np_pattern, out_res):
+def readImages(image_np_pattern, out_res, to_plot):
     #lines = open('opengameart-files/files-list.txt').readlines()
     files = glob(image_np_pattern)
     files.sort()
@@ -322,9 +335,8 @@ def prepareImages(img_collection, out_dim, out_res):
         for i, fpath in enumerate(img_collection):
             if i % 100 == 0:
                 print("preparing images", i, len(img_collection))
-            if i + 1 < len(img_collection) and len(batch) < batchSize:
-                batch.append((fpath, out_res, len(batch)))
-            else:
+            batch.append((fpath, out_res, len(batch)))
+            if i + 1 >= len(img_collection) or len(batch) >= batchSize:
                 with multiprocessing.Pool(12) as p:
                     images = p.map(readImage, batch)
                     for img in images:
@@ -344,16 +356,53 @@ def prepareImages(img_collection, out_dim, out_res):
     # out = np.frombuffer(dumpfile).reshape((out_dim * out_res, out_dim * out_res, 4), dtype=np.uint8)
     return out
 
-out_dir = './'
-out_name = 'gridtsne14.png'
-out_res = 32
-image_np_pattern = '/mnt/d/opengameart/sprites/*.np'
-out_dim = math.ceil(math.sqrt(len(glob(image_np_pattern))))
-to_plot = np.square(out_dim)
-img_collection = readImages(image_np_pattern, out_res)[0:to_plot]
-images = prepareImages(img_collection, out_dim, out_res)
-X_2d = readXY()[0:to_plot]
-computeGrid2(images, X_2d, out_res, out_dim)
+def getImageColors(img_collection):
+    colors = np.zeros((len(img_collection), 4), np.uint8)
+    def newColor():
+        r = random.randint(0, 255)
+        g = random.randint(0, 255)
+        b = random.randint(0, 255)
+        a = 255
+        return np.array([r, g, b, a])
+    oldBPath = ''
+    color = newColor()
+    for i, path in enumerate(img_collection):
+        #l = len('.np') + len('_00000.png')
+        l = len('_00000.png')
+        bpath = path[:-l]
+        if oldBPath != bpath:
+            oldBPath = bpath
+            color = newColor()
+            #print(bpath)
+        colors[i] = color
+    return colors
+
+if __name__ == '__main__':
+    out_dir = './'
+    out_name = 'gridtsne14.png'
+    out_res = 32
+    #out_res = 8
+    image_np_pattern = '/mnt/d/opengameart/sprites/*.np'
+    out_dim = math.ceil(math.sqrt(len(glob(image_np_pattern))))
+    to_plot = np.square(out_dim)
+
+    img_collection = readImages(image_np_pattern, out_res, to_plot)[0:to_plot]
+    imageColors = getImageColors(img_collection)
+
+    X_2d = readXY()[0:to_plot]
+    plt.figure(figsize=(40, 40))
+    #clr = [i * 255 // len(X_2d) for i in range(len(X_2d))]
+    #clr = [i // out_dim for i in range(len(X_2d))]
+    pad = lambda x: ('0' * (2 - len(x))) + x
+    clr = [('#' + pad(hex(r)[2:]) + pad(hex(g)[2:]) + pad(hex(b)[2:])) for r, g, b, a in imageColors]
+    plt.scatter(X_2d[:, 1], 1 - X_2d[:, 0], c=clr)
+    plt.savefig('plot.png')
+    print('plot done')
+
+    if 1:
+        images = prepareImages(img_collection, out_dim, out_res)
+        computeGrid2(imageColors, images, X_2d, out_res, out_dim)
+
 #out_dim = 32
 #save_tsne_grid(images, X_2d, out_res, out_dim)
 
