@@ -64,8 +64,9 @@ def save_tsne_grid2(img_collection, X_2d, out_res, out_dim):
 
     X = [(x, y, i) for i, (x, y) in enumerate(X_2d)]
 
-    bucketDim2 = 1024
+    #bucketDim2 = 1024
     #bucketDim2 = 4096
+    bucketDim2 = 16384
     iout = len(X) * 2
     nearestPower2 = 2 ** math.ceil(math.log2(len(X)))
     for i in range(nearestPower2 - len(X)):
@@ -565,14 +566,14 @@ def getFiles(imageDir):
     for x in range(len(paths), to_plot):
         paths.append(path)
 
-    print('WARNING: reenable sort for ^unpacked')
-    #paths.sort()
+    #print('WARNING: reenable sort for ^unpacked')
+    paths.sort()
 
     return (out_dim, to_plot, paths)
 
 if __name__ == '__main__':
     out_dir = './'
-    out_name = 'gridtsne15.png'
+    out_name = 'gridtsne16.png'
     out_res = 32
     #out_res = 8
     #image_np_pattern = '/mnt/d/opengameart/sprites/*.np'
