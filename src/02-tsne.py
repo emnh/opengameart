@@ -75,21 +75,22 @@ if 0:
         del data2
         data2 = np.fromfile(pcaFile, np.float32).reshape((l, pcaComps))
 
-if not os.path.exists(pcaFile):
-    pca = PCA(n_components=pcaComps)
-    del data
-    data2 = data2[0:perComp]
-    print(data2.shape)
-    #data2 = np.swapaxes(data2, 1, 0)
-    data2 = pca.fit_transform(data2)
-    fd = open(pcaFile, 'wb')
-    fd.write(data2.flatten().tobytes())
-    fd.close()
-else:
-    l = len(data)
-    del data
-    del data2
-    data2 = np.fromfile(pcaFile, np.float32).reshape((perComp, pcaComps))
+if 0:
+    if not os.path.exists(pcaFile):
+        pca = PCA(n_components=pcaComps)
+        del data
+        data2 = data2[0:perComp]
+        print(data2.shape)
+        #data2 = np.swapaxes(data2, 1, 0)
+        data2 = pca.fit_transform(data2)
+        fd = open(pcaFile, 'wb')
+        fd.write(data2.flatten().tobytes())
+        fd.close()
+    else:
+        l = len(data)
+        del data
+        del data2
+        data2 = np.fromfile(pcaFile, np.float32).reshape((perComp, pcaComps))
 
 #tsne = TSNE(n_components=2)
 #embedding_array = bhtsne.run_bh_tsne(data2, initial_dims=data2.shape[1], verbose=True).tolist()
