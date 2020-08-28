@@ -7,6 +7,7 @@ import json
 import os
 import math
 import random
+import time
 import sys
 import subprocess
 import multiprocessing
@@ -14,7 +15,6 @@ from glob import glob
 from scipy.spatial.distance import cdist
 
 import matplotlib.pyplot as plt
-#from cuml.dask.neighbors import NearestNeighbors
 #import cudf
 #from cuml.neighbors import NearestNeighbors
 
@@ -56,7 +56,7 @@ def readImage(args):
             #print("scaling", img)
             factor = max(2, out_res // min(img.width, img.height))
             outfname = 'out' + str(processIndex) + '.png'
-            command = '../hqx/hqx -s ' + str(factor) + ' ' + path + ' ' + outfname
+            command = '../hqx/hqx -s ' + str(factor) + ' "' + path + '" ' + outfname
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             img = f(outfname)
@@ -91,6 +91,61 @@ def blah():
         y = max(y, 0.0)
         y = min(y, 1.0)
 
+def spreadXY(X_2d, threshold, speed):
+    'spreads items until distance is greater than threshold'
+    def kernel(x, y, outx, outy, threshold2):
+        for i, (x2, y2) in enumerate(zip(x, y)):
+            d = math.sqrt(x2 * x2 + y2 * y2)
+            if 0 < d <= threshold2:
+                outx[i] = x2 / d
+                outy[i] = y2 / d
+            else:
+                outx[i] = 0
+                outy[i] = 0
+    print('spreadXY')
+    length = len(X_2d)
+    X = cudf.DataFrame()
+    X['x'] = X_2d[0:length, 0]
+    X['y'] = X_2d[0:length, 1]
+    k = 8
+    scale = 10000
+    threshold *= scale
+    speed *= scale
+    X = X.mul(scale)
+    #X = np.copy(X_2d[:length])
+    for i in range(20):
+        nn = NearestNeighbors(n_neighbors=k)
+        nn.fit(X)
+        distances, indices = nn.kneighbors(X)
+        #print(distances.shape)
+        joins = []
+
+        s = X.sum()
+        print("iteration", i, "sum dist", s)
+
+        newX = X
+        for j in range(k):
+            join = indices.drop([x for x in range(k) if x != j]) #.rename(mapper={j: 'x'}, columns=[j])
+            join = join.merge(X, how='left', left_on=[j], right_index=True)
+            join = join.drop(j)
+            v = join.sub(X)
+            v = v.apply_rows(kernel, incols=['x', 'y'], outcols=dict(outx=np.float32, outy=np.float32), kwargs=dict(threshold2=threshold))
+            v = v.drop(['x', 'y'])
+            v = v.rename(columns={'outx': 'x', 'outy': 'y'})
+            newX = newX.sub(v.mul(speed))
+            #newX = newX.add(1)
+            #v = v.query('x * x + y * y <= ' + str(threshold * threshold))
+        #print("newX")
+        #print(newX)
+        X = newX
+
+        s = X.sum()
+        print("iteration", i, "sum dist", s)
+    X = X.truediv(scale)
+    X = np.array(X.as_matrix())
+    print(X.shape)
+    return X
+
 # approximate hacky solution, scales more (hopefully 200k)
 def computeGrid2(imageColors, bigImage, X_2d, out_res, out_dim):
     #xs = sorted(remaining, key=lambda x: x[0])
@@ -98,33 +153,33 @@ def computeGrid2(imageColors, bigImage, X_2d, out_res, out_dim):
     grid = np.zeros((out_dim, out_dim), np.bool)
     out2 = np.zeros((out_dim * out_res, out_dim * out_res, 4), dtype=np.uint8)
 
-    #circles = []
-    #for dx in range(out_dim):
-    #    for dy in range(out_dim):
-    #        cx = dx - out_dim // 2
-    #        cy = dy - out_dim // 2
-    #        theta = math.atan2(cy, cx)
-    #        r = math.sqrt(cx * cx + cy * cy)
-    #        circles.append((r, theta, cx, cy))
-    #circles.sort()
+    circles = []
+    for dx in range(out_dim):
+        for dy in range(out_dim):
+            cx = dx - out_dim // 2
+            cy = dy - out_dim // 2
+            theta = math.atan2(cy, cx)
+            r = math.sqrt(cx * cx + cy * cy)
+            circles.append((r, theta, cx, cy))
+    circles.sort()
 
-    #xnormal = []
-    #xcircles = []
-    #maxr = 0
-    #for i, (dx, dy) in enumerate(X_2d):
-    #    cx = dx - 0.5
-    #    cy = dy - 0.5
-    #    theta = math.atan2(cy, cx)
-    #    r = math.sqrt(cx * cx + cy * cy)
-    #    maxr = max(r, maxr)
-    #    xcircles.append((r, theta, i, dx, dy))
-    #    xnormal.append((i, dx, dy))
-    #xcircles.sort()
-    #xcircles = [(i, x, y) for _, _, i, x, y in xcircles]
+    xnormal = []
+    xcircles = []
+    maxr = 0
+    for i, (dx, dy) in enumerate(X_2d):
+        cx = dx - 0.5
+        cy = dy - 0.5
+        theta = math.atan2(cy, cx)
+        r = math.sqrt(cx * cx + cy * cy)
+        maxr = max(r, maxr)
+        xcircles.append((r, theta, i, dx, dy))
+        xnormal.append((i, dx, dy))
+    xcircles.sort()
+    xcircles = [(i, x, y) for _, _, i, x, y in xcircles]
 
-    #for k, (i, x, y) in enumerate(xnormal):
-    for k, i in enumerate(range(to_plot)):
-        x, y = X_2d[i]
+    for k, (i, x, y) in enumerate(xcircles):
+        #for k, i in enumerate(range(to_plot)):
+        #x, y = X_2d[i]
         if k % 100 == 0:
             print("k", k, x, y, len(X_2d))
 
@@ -133,21 +188,25 @@ def computeGrid2(imageColors, bigImage, X_2d, out_res, out_dim):
         x = int(np.floor(x * od2)) % od2
         y = int(np.floor(y * od2)) % od2
 
-        if False:
+        if True:
             done = False
+            j = 0
             for _, _, dx, dy in circles:
                 if 0 <= x + dx < out_dim and 0 <= y + dy < out_dim and grid[x + dx, y + dy] == False:
                     x = x + dx
                     y = y + dy
                     done = True
                     break
+                j += 1
+                if j > 100:
+                    break
             if not done:
                 continue
             grid[x, y] = True
 
-        if grid[x, y]:
-            continue
-        grid[x, y] = True
+        #if grid[x, y]:
+        #    continue
+        #grid[x, y] = True
 
         h_range = int(np.floor(x * out_res))
         w_range = int(np.floor(y * out_res))
@@ -257,8 +316,8 @@ def readXY():
         zeroes.append(i)
 
     # XXX: made a bug that skipped every 13th image
-    print("warning: skipping every 13th to compensate for bug")
-    embeddings = [x for i, x in enumerate(embeddings) if i % 13 != 0]
+    #print("warning: skipping every 13th to compensate for bug")
+    #embeddings = [x for i, x in enumerate(embeddings) if i % 13 != 0]
 
     #for i in range(0, len(embeddings), 13):
     #    zeroes.append(i)
@@ -332,12 +391,18 @@ def prepareImages(img_collection, out_dim, out_res):
         k = 0
         batch = []
         batchSize = 12
-        for i, fpath in enumerate(img_collection):
-            if i % 100 == 0:
-                print("preparing images", i, len(img_collection))
-            batch.append((fpath, out_res, len(batch)))
-            if i + 1 >= len(img_collection) or len(batch) >= batchSize:
-                with multiprocessing.Pool(12) as p:
+        start = time.time()
+        with multiprocessing.Pool(batchSize) as p:
+            for i, fpath in enumerate(img_collection):
+                if i % 100 == 0:
+                    end = time.time()
+                    elapsed = end - start
+                    peri = elapsed / max(1, i)
+                    remaining = len(img_collection) - i
+                    remTime = remaining * peri / 3600
+                    print("preparing images", i, peri, 's per image', remTime, ' h left', len(img_collection), fpath)
+                batch.append((fpath, out_res, len(batch)))
+                if i + 1 >= len(img_collection) or len(batch) >= batchSize:
                     images = p.map(readImage, batch)
                     for img in images:
                         #if np.equal(img[::3], 0).all():
@@ -348,7 +413,7 @@ def prepareImages(img_collection, out_dim, out_res):
                         w_range = y * out_res
                         out[h_range:h_range + out_res, w_range:w_range + out_res, :] = img
                         k += 1
-                batch = []
+                    batch = []
         im = Image.fromarray(out)
         im.save(dumpfile, quality=100)
     else:
@@ -377,30 +442,57 @@ def getImageColors(img_collection):
         colors[i] = color
     return colors
 
+def getFiles(imageDir):
+    paths = []
+    for root, dirs, files in os.walk(imageDir):
+        for file in files:
+            if file.lower().endswith('.np'):
+                file2 = file[:-len('.np')]
+                paths.append(os.path.join(root, file2))
+
+    out_dim = math.ceil(math.sqrt(len(paths)))
+    to_plot = np.square(out_dim)
+
+    path = '../blank.png'
+    # blank = Image.open(path).resize(size=(out_res, out_res))
+    for x in range(len(paths), to_plot):
+        paths.append(path)
+
+    paths.sort()
+    return (out_dim, to_plot, paths)
+
 if __name__ == '__main__':
     out_dir = './'
     out_name = 'gridtsne14.png'
     out_res = 32
     #out_res = 8
-    image_np_pattern = '/mnt/d/opengameart/sprites/*.np'
-    out_dim = math.ceil(math.sqrt(len(glob(image_np_pattern))))
-    to_plot = np.square(out_dim)
+    #image_np_pattern = '/mnt/d/opengameart/sprites/*.np'
 
-    img_collection = readImages(image_np_pattern, out_res, to_plot)[0:to_plot]
-    imageColors = getImageColors(img_collection)
+    imageDir = '/mnt/d/opengameart/unpacked'
+    #imageDir = '/mnt/d/opengameart/sprites'
+    out_dim, to_plot, pathlist = getFiles(imageDir)
 
-    X_2d = readXY()[0:to_plot]
-    plt.figure(figsize=(40, 40))
-    #clr = [i * 255 // len(X_2d) for i in range(len(X_2d))]
-    #clr = [i // out_dim for i in range(len(X_2d))]
-    pad = lambda x: ('0' * (2 - len(x))) + x
-    clr = [('#' + pad(hex(r)[2:]) + pad(hex(g)[2:]) + pad(hex(b)[2:])) for r, g, b, a in imageColors]
-    plt.scatter(X_2d[:, 1], 1 - X_2d[:, 0], c=clr)
-    plt.savefig('plot.png')
-    print('plot done')
+    #out_dim = math.ceil(math.sqrt(len(glob(image_np_pattern))))
+    #to_plot = np.square(out_dim)
+
+    #img_collection = readImages(image_np_pattern, out_res, to_plot)[0:to_plot]
+
+    if 0:
+        X_2d = readXY()[0:to_plot]
+        #X_2d = spreadXY(X_2d, 1 / out_dim, 0.1 / out_dim)
+        X_2d = spreadXY(X_2d, 2 / out_dim, 0.25 / out_dim)
+        plt.figure(figsize=(40, 40))
+        #clr = [i * 255 // len(X_2d) for i in range(len(X_2d))]
+        #clr = [i // out_dim for i in range(len(X_2d))]
+        pad = lambda x: ('0' * (2 - len(x))) + x
+        imageColors = getImageColors(pathlist)
+        clr = [('#' + pad(hex(r)[2:]) + pad(hex(g)[2:]) + pad(hex(b)[2:])) for r, g, b, a in imageColors]
+        plt.scatter(X_2d[:, 1], 1 - X_2d[:, 0], c=clr)
+        plt.savefig('plot.png')
+        print('plot done')
 
     if 1:
-        images = prepareImages(img_collection, out_dim, out_res)
+        images = prepareImages(pathlist, out_dim, out_res)
         computeGrid2(imageColors, images, X_2d, out_res, out_dim)
 
 #out_dim = 32
