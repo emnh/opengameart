@@ -15,8 +15,6 @@ from glob import glob
 from scipy.spatial.distance import cdist
 
 import matplotlib.pyplot as plt
-#import cudf
-#from cuml.neighbors import NearestNeighbors
 
 Image.MAX_IMAGE_PIXELS = None
 
@@ -43,6 +41,104 @@ def save_tsne_grid(img_collection, X_2d, out_res, out_dim):
         h_range = int(np.floor(pos[0]* (out_dim - 1) * out_res))
         w_range = int(np.floor(pos[1]* (out_dim - 1) * out_res))
         out[h_range:h_range + out_res, w_range:w_range + out_res] = img
+
+    im = Image.fromarray(out)
+    im.save(out_dir + out_name, quality=100)
+
+def split(X, dim):
+    xs = sorted(X, key=lambda x: x[0])
+    ys = sorted(X, key=lambda x: x[1])
+    xrange = xs[-1][0] - xs[0][0]
+    yrange = ys[-1][1] - xs[0][1]
+    #xmedian = xs[len(xs) // 2]
+    #ymedian = ys[len(ys) // 2]
+    if xrange > yrange:
+        X = xs
+    else:
+        X = ys
+    splitPoint = len(X) // 2
+    return [X[0:splitPoint], X[splitPoint:len(X)]]
+
+def save_tsne_grid2(img_collection, X_2d, out_res, out_dim):
+    from lapjv import lapjv
+
+    X = [(x, y, i) for i, (x, y) in enumerate(X_2d)]
+
+    bucketDim2 = 1024
+    #bucketDim2 = 4096
+    iout = len(X) * 2
+    nearestPower2 = 2 ** math.ceil(math.log2(len(X)))
+    for i in range(nearestPower2 - len(X)):
+        X.append((100, 100, iout))
+    buckets = [X]
+    while max([len(b) for b in buckets]) > bucketDim2:
+        maxindex = 0
+        maxb = 0
+        for i, b in enumerate(buckets):
+            if len(b) > maxb:
+                maxb = len(b)
+                maxindex = i
+        maxbucket = buckets[maxindex]
+        minbuckets = [b for i, b in enumerate(buckets) if i != maxindex]
+        minbuckets.extend(split(maxbucket, random.randint(0, 1)))
+        buckets = minbuckets
+    print("buckets", [len(b) for b in buckets])
+
+    bucket_dim = int(math.sqrt(bucketDim2))
+    #bucketsX = out_dim // bucket_dim + 1
+    #bucketsX = math.ceil(math.sqrt(len(X))) // bucket_dim + 1
+    bucketsX = math.ceil(math.sqrt(len(buckets)))
+    out_dim = (bucketsX + 1) * bucket_dim
+    toplot = bucket_dim * bucket_dim
+    assert toplot == bucketDim2
+    out = np.zeros((out_dim * out_res, out_dim * out_res, 4), np.uint8)
+    print('len(buckets)', len(buckets), 'bucketDim2', bucketDim2, 'bucket_dim', bucket_dim, 'bucketsX', bucketsX, 'out_dim', out_dim, 'toplot', toplot)
+
+    for bi, bucket in enumerate(buckets):
+        print("lapjv bucket", bi, len(buckets))
+        X_2d = bucket
+        baseX = (bi % (bucketsX - 0)) * bucket_dim * out_res
+        baseY = (bi // (bucketsX - 0)) * bucket_dim * out_res
+        indices = [i for x, y, i in bucket]
+        bucket = [(x, y) for x, y, i in bucket]
+        # zero pad
+        #for i in range(bucketDim2 - len(bucket)):
+        #    bucket.append([(0, 0)])
+        npBucket = np.zeros((toplot, 2))
+        for i, (x, y) in enumerate(bucket):
+            npBucket[i][0] = x
+            npBucket[i][1] = y
+
+        grid = np.dstack(np.meshgrid(np.linspace(0, 1, bucket_dim), np.linspace(0, 1, bucket_dim))).reshape(-1, 2)
+        cost_matrix = cdist(grid, npBucket, "sqeuclidean").astype(np.float32)
+        cost_matrix = cost_matrix * (100000 / cost_matrix.max())
+        row_asses, col_asses, _ = lapjv(cost_matrix)
+        grid_jv = grid[col_asses]
+
+        for pos, i in zip(grid_jv, range(toplot)):
+            if i >= len(indices):
+                #print("blank i", i)
+                continue
+            k = indices[i]
+
+            x, y = pos
+            x = int(np.floor(x * (bucket_dim - 1) * out_res)) + baseX
+            y = int(np.floor(y * (bucket_dim - 1) * out_res)) + baseY
+            # print("xy", baseX, baseY, x, y)
+            h_range = x
+            w_range = y
+
+            if k == iout:
+                #print("blank k", k, x, y)
+                continue
+
+            x2, y2 = k % (img_collection.shape[0] // out_res), k // (img_collection.shape[1] // out_res)
+            h_range2 = x2 * out_res
+            w_range2 = y2 * out_res
+            #print("hmmmmm", i, x2, y2, h_range2, w_range2)
+            img = img_collection[h_range2:h_range2 + out_res, w_range2:w_range2 + out_res, :]
+
+            out[h_range:h_range + out_res, w_range:w_range + out_res] = img
 
     im = Image.fromarray(out)
     im.save(out_dir + out_name, quality=100)
@@ -93,6 +189,10 @@ def blah():
 
 def spreadXY(X_2d, threshold, speed):
     'spreads items until distance is greater than threshold'
+
+    import cudf
+    from cuml.neighbors import NearestNeighbors
+
     def kernel(x, y, outx, outy, threshold2):
         for i, (x2, y2) in enumerate(zip(x, y)):
             d = math.sqrt(x2 * x2 + y2 * y2)
@@ -443,13 +543,20 @@ def getImageColors(img_collection):
     return colors
 
 def getFiles(imageDir):
-    paths = []
-    for root, dirs, files in os.walk(imageDir):
-        for file in files:
-            if file.lower().endswith('.np'):
-                file2 = file[:-len('.np')]
-                paths.append(os.path.join(root, file2))
-
+    if not os.path.exists('filelist.txt'):
+        paths = []
+        for root, dirs, files in os.walk(imageDir):
+            for file in files:
+                if file.lower().endswith('.np'):
+                    file2 = file[:-len('.np')]
+                    paths.append(os.path.join(root, file2))
+        fd = open('filelist.txt', 'w')
+        fd.writelines([x + '\n' for x in paths])
+        fd.close()
+    else:
+        fd = open('filelist.txt', 'r')
+        paths = [x.rstrip() for x in fd.readlines()]
+        fd.close()
     out_dim = math.ceil(math.sqrt(len(paths)))
     to_plot = np.square(out_dim)
 
@@ -458,12 +565,14 @@ def getFiles(imageDir):
     for x in range(len(paths), to_plot):
         paths.append(path)
 
-    paths.sort()
+    print('WARNING: reenable sort for ^unpacked')
+    #paths.sort()
+
     return (out_dim, to_plot, paths)
 
 if __name__ == '__main__':
     out_dir = './'
-    out_name = 'gridtsne14.png'
+    out_name = 'gridtsne15.png'
     out_res = 32
     #out_res = 8
     #image_np_pattern = '/mnt/d/opengameart/sprites/*.np'
@@ -471,14 +580,14 @@ if __name__ == '__main__':
     imageDir = '/mnt/d/opengameart/unpacked'
     #imageDir = '/mnt/d/opengameart/sprites'
     out_dim, to_plot, pathlist = getFiles(imageDir)
-
     #out_dim = math.ceil(math.sqrt(len(glob(image_np_pattern))))
     #to_plot = np.square(out_dim)
 
     #img_collection = readImages(image_np_pattern, out_res, to_plot)[0:to_plot]
 
+    X_2d = readXY()[0:to_plot]
+
     if 0:
-        X_2d = readXY()[0:to_plot]
         #X_2d = spreadXY(X_2d, 1 / out_dim, 0.1 / out_dim)
         X_2d = spreadXY(X_2d, 2 / out_dim, 0.25 / out_dim)
         plt.figure(figsize=(40, 40))
@@ -493,7 +602,8 @@ if __name__ == '__main__':
 
     if 1:
         images = prepareImages(pathlist, out_dim, out_res)
-        computeGrid2(imageColors, images, X_2d, out_res, out_dim)
+        save_tsne_grid2(images, X_2d, out_res, out_dim)
+        #computeGrid2(imageColors, images, X_2d, out_res, out_dim)
 
 #out_dim = 32
 #save_tsne_grid(images, X_2d, out_res, out_dim)
