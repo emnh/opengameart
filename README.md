@@ -38,6 +38,9 @@ Source code is at "src". Sorry for lots of hard coded details.
  - DONE: Run lapjv (src/grid.py) (https://github.com/src-d/lapjv) on t-SNE to embed on grid
  - TODO: Run on RTX 2080 Ti with enough memory to process all images. Perhaps do the full 4-500k image set?
  - TODO: Some way to link back to the original OpenGameArt page from tiled grid t-SNE, so you can get the art you see that you want.
+ - TODO: Set transparent background color to black, both in predict.py and grid.py.
+ - TODO: Add command line arguments, add scripts to run.
+ - TODO: Move data alongside image files, not in dev folder.
 
 # Future
  - Perhaps look into UMAP:
