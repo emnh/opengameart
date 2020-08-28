@@ -50,53 +50,58 @@ def processFiles():
     i = 0
     batch = []
     #for fname in os.listdir(path):
+    paths = []
     for path, dirs, files in os.walk(rootpath, topdown=False):
         for fname in files:
             flow = fname.lower()
             if not (flow.endswith('.png') or flow.endswith('.jpg')):
                 continue
             img_path = os.path.join(path, fname)
-            #if "\"" + img_path + "\"" in prevdata:
-                #print("Already got "+ img_path)
-            #    continue
-            outpath = img_path + '.np'
-            if os.path.exists(outpath):
-                continue
-            try:
-                x = loadImage(img_path)
-            except:
-                print("ERROR LOADING IMAGE: " + fname)
-                continue
-            #predictions = model.predict(x)
-            #for _, pred, prob in decode_predictions(predictions)[0]:
-            #    print("predicted %s with probability %0.3f" % (pred, prob))
-            batch.append([outpath, x])
-            i += 1
-            if i > len(files) or len(batch) >= 20:
-                #xs = np.shape((len(batch)))
-                #print(x.shape)
-                xs = np.zeros((len(batch), 224, 224, 3))
-                for j, x in enumerate(batch):
-                    xs[j] = x[1][0]
-                features = feat_extractor.predict(xs)
-                #flist = features[0].tolist()
-                end = time.time()
-                #d = {
-                #    "path": img_path,
-                #    "features": flist
-                #}
-                #outfd.write(json.dumps(d) + "\n")
+            paths.append(img_path)
+    paths.sort()
+
+    for img_path in paths:
+        #if "\"" + img_path + "\"" in prevdata:
+            #print("Already got "+ img_path)
+        #    continue
+        outpath = img_path + '.np'
+        if os.path.exists(outpath):
+            continue
+        try:
+            x = loadImage(img_path)
+        except:
+            print("ERROR LOADING IMAGE: " + fname)
+            continue
+        #predictions = model.predict(x)
+        #for _, pred, prob in decode_predictions(predictions)[0]:
+        #    print("predicted %s with probability %0.3f" % (pred, prob))
+        batch.append([outpath, x])
+        i += 1
+        if i > len(files) or len(batch) >= 20:
+            #xs = np.shape((len(batch)))
+            #print(x.shape)
+            xs = np.zeros((len(batch), 224, 224, 3))
+            for j, x in enumerate(batch):
+                xs[j] = x[1][0]
+            features = feat_extractor.predict(xs)
+            #flist = features[0].tolist()
+            end = time.time()
+            #d = {
+            #    "path": img_path,
+            #    "features": flist
+            #}
+            #outfd.write(json.dumps(d) + "\n")
+            #print(features.shape)
+            for (outpath2, x), feature in zip(batch, features):
+                #print(".", end="")
+                fd = open(outpath2, 'wb')
+                fd.write(feature.ravel().tobytes())
+                fd.close()
                 #print(features.shape)
-                for (outpath2, x), feature in zip(batch, features):
-                    #print(".", end="")
-                    fd = open(outpath2, 'wb')
-                    fd.write(feature.ravel().tobytes())
-                    fd.close()
-                    #print(features.shape)
-                #print("")
-                #if i % 10 == 0:
-                print(str((end - start) / i) + " s per image. " + str(i) + " images: file " + outpath)
-                batch = []
+            #print("")
+            #if i % 10 == 0:
+            print(str((end - start) / i) + " s per image. " + str(i) + " images: file " + outpath)
+            batch = []
 
 def prepImage(args):
     k, imgArray = args
