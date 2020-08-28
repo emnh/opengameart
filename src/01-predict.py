@@ -123,16 +123,16 @@ def processFiles2():
     out = np.zeros((to_plot, 4096), np.float32)
     batchSize = 18
     batch = []
-    for k in range(to_plot):
-        x, y = k % out_dim, k // out_dim
-        h_range = x * out_res
-        w_range = y * out_res
-        imgArray = bigImage[h_range:h_range + out_res, w_range:w_range + out_res, :]
-        #print(features[0])
-        end = time.time()
-        batch.append([k, imgArray])
-        if k + 1 >= to_plot or len(batch) >= batchSize:
-            with multiprocessing.Pool(batchSize) as p:
+    with multiprocessing.Pool(batchSize) as p:
+        for k in range(to_plot):
+            x, y = k % out_dim, k // out_dim
+            h_range = x * out_res
+            w_range = y * out_res
+            imgArray = bigImage[h_range:h_range + out_res, w_range:w_range + out_res, :]
+            #print(features[0])
+            end = time.time()
+            batch.append([k, imgArray])
+            if k + 1 >= to_plot or len(batch) >= batchSize:
                 images = p.map(prepImage, batch)
                 xs = np.zeros((len(batch), 224, 224, 3))
                 for j, x in enumerate(images):
@@ -141,8 +141,8 @@ def processFiles2():
                 #print(features.shape)
                 for (k2, _), i in zip(batch, range(features.shape[0])):
                     out[k2] = features[i]
-            batch = []
-            print(str((end - start) / (k + 1)) + " s per image. " + str(k) + " images: file " + img_collection[k])
+                batch = []
+                print(str((end - start) / (k + 1)) + " s per image. " + str(k) + " images: file " + img_collection[k])
     fd = open('predict2.np', 'wb')
     fd.write(out.flatten().tobytes())
     fd.close()
