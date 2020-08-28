@@ -48,9 +48,10 @@ print('computing tsne embedding')
 #data = data[0:10000]
 indices = [x for x in range(len(data))]
 #random.shuffle(indices)
-data2 = np.copy(data)
-for i1, i2 in zip(range(len(data)), indices):
-    data2[i1] = data[i2]
+data2 = data
+#data2 = np.copy(data)
+#for i1, i2 in zip(range(len(data)), indices):
+#    data2[i1] = data[i2]
 
 pcaFile = 'pca.np'
 perComp = 100000
@@ -94,7 +95,7 @@ if 0:
 
 #tsne = TSNE(n_components=2)
 #embedding_array = bhtsne.run_bh_tsne(data2, initial_dims=data2.shape[1], verbose=True).tolist()
-
+data2 = data2[0:230000]
 tsne = TSNE(n_components=2, perplexity=50, n_iter=5000, angle=0.8, learning_rate=10, n_neighbors=2)
 embedding_array = tsne.fit_transform(data2).tolist()
 #embedding_array = data2.tolist()
