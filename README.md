@@ -31,11 +31,12 @@ Source code is at "src". Sorry for lots of hard coded details.
 # Progress
  - DONE: Mirror OpenGameArt
  - DONE: Unpack all zip files (but not processed yet)
- - TODO: Unpack all sprites
+ - TODO: Unpack all sprites (done for /files, not done for /unpacked. worth it? most pack files contain individuals)
  - DONE: Get feature vector of each image (src/predict.py)
  - DONE: Run t-SNE to get 2D embedding (src/tsne.py)
  - DONE: Test it with primitive HTML (src/html-out.py)
  - DONE: Run lapjv (src/grid.py) (https://github.com/src-d/lapjv) on t-SNE to embed on grid
+ - TODO: Run on RTX 2080 Ti with enough memory to process all images. Perhaps do the full 4-500k image set?
  - TODO: Some way to link back to the original OpenGameArt page from tiled grid t-SNE, so you can get the art you see that you want.
 
 # Future
