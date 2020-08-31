@@ -22,13 +22,13 @@ def getFiles(imageDir, savefile):
 
 if __name__ == '__main__':
     spriteDir = '/mnt/i/opengameart/sprites'
-    imageDir = '/mnt/i/opengameart/files'
+    filesDir = '/mnt/i/opengameart/files'
     unpackedDir = '/mnt/i/opengameart/unpacked'
     
     paths = []
     spritePaths = getFiles(spriteDir, 'sprites.txt')
-    filePaths = getFiles(spriteDir, 'files.txt')
-    unpackedPaths = getFiles(spriteDir, 'unpacked.txt')
+    filePaths = getFiles(filesDir, 'files.txt')
+    unpackedPaths = getFiles(unpackedDir, 'unpacked.txt')
 
     l = len('_00000.png')
     usedPaths = [(x[:-l] + '.png').replace(spriteDir, imageDir) for x in paths]
