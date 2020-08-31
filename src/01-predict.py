@@ -25,19 +25,24 @@ from PIL import Image
 model = VGG16(weights='imagenet', include_top=True)
 feat_extractor = Model(inputs=model.input, outputs=model.get_layer("fc2").output)
 
-def loadImage(img_path):
-    img = image.load_img(img_path, target_size=(224, 224))
-    x = image.img_to_array(img)
-    x = np.expand_dims(x, axis=0)
-    x = preprocess_input(x)
-    return x
+def loadImage(args):
+    outpath, img_path = args
+    try:
+        img = image.load_img(img_path, target_size=(224, 224))
+        x = image.img_to_array(img)
+        x = np.expand_dims(x, axis=0)
+        x = preprocess_input(x)
+        return x
+    except:
+        print("ERROR LOADING IMAGE: " + img_path)
+        return None
 
 def processFiles():
     #model.summary()
     #feat_extractor.summary()
 
     #if len(sys.argv) > 1:
-    rootpath = '/mnt/d/opengameart/unpacked'
+    rootpath = '/mnt/i/opengameart/files'
     #prevfd = open('files-list.txt')
     #prevdata = prevfd.read()
     #d = {}
@@ -60,48 +65,48 @@ def processFiles():
             paths.append(img_path)
     paths.sort()
 
-    for img_path in paths:
-        #if "\"" + img_path + "\"" in prevdata:
-            #print("Already got "+ img_path)
-        #    continue
-        outpath = img_path + '.np'
-        if os.path.exists(outpath):
-            continue
-        try:
-            x = loadImage(img_path)
-        except:
-            print("ERROR LOADING IMAGE: " + fname)
-            continue
-        #predictions = model.predict(x)
-        #for _, pred, prob in decode_predictions(predictions)[0]:
-        #    print("predicted %s with probability %0.3f" % (pred, prob))
-        batch.append([outpath, x])
-        i += 1
-        if i > len(files) or len(batch) >= 20:
-            #xs = np.shape((len(batch)))
-            #print(x.shape)
-            xs = np.zeros((len(batch), 224, 224, 3))
-            for j, x in enumerate(batch):
-                xs[j] = x[1][0]
-            features = feat_extractor.predict(xs)
-            #flist = features[0].tolist()
-            end = time.time()
-            #d = {
-            #    "path": img_path,
-            #    "features": flist
-            #}
-            #outfd.write(json.dumps(d) + "\n")
-            #print(features.shape)
-            for (outpath2, x), feature in zip(batch, features):
-                #print(".", end="")
-                fd = open(outpath2, 'wb')
-                fd.write(feature.ravel().tobytes())
-                fd.close()
+    batchSize = 16
+    with multiprocessing.Pool(batchSize) as p:
+        for img_path in paths:
+            #if "\"" + img_path + "\"" in prevdata:
+                #print("Already got "+ img_path)
+            #    continue
+            outpath = img_path + '.np'
+            if os.path.exists(outpath):
+                continue
+            #predictions = model.predict(x)
+            #for _, pred, prob in decode_predictions(predictions)[0]:
+            #    print("predicted %s with probability %0.3f" % (pred, prob))
+            batch.append([outpath, img_path])
+            i += 1
+            if i > len(files) or len(batch) >= batchSize:
+                #xs = np.shape((len(batch)))
+                #print(x.shape)
+                images = p.map(loadImage, batch)
+                xs = np.zeros((len(batch), 224, 224, 3))
+                for j, x in enumerate(images):
+                    xs[j] = x[0]
+                features = feat_extractor.predict(xs)
+                #flist = features[0].tolist()
+                end = time.time()
+                #d = {
+                #    "path": img_path,
+                #    "features": flist
+                #}
+                #outfd.write(json.dumps(d) + "\n")
                 #print(features.shape)
-            #print("")
-            #if i % 10 == 0:
-            print(str((end - start) / i) + " s per image. " + str(i) + " images: file " + outpath)
-            batch = []
+                for (outpath2, _), feature, image in zip(batch, features, images):
+                    #print(".", end="")
+                    if image != None:
+                        fd = open(outpath2, 'wb')
+                        # TODO: what is the difference between ravel and flatten?
+                        fd.write(feature.ravel().tobytes())
+                        fd.close()
+                    #print(features.shape)
+                #print("")
+                #if i % 10 == 0:
+                print(str((end - start) / i) + " s per image. " + str(i) + " images: file " + outpath)
+                batch = []
 
 def prepImage(args):
     k, imgArray = args
@@ -153,5 +158,5 @@ def processFiles2():
     fd.close()
 
 if __name__ == '__main__':
-    #processFiles()
-    processFiles2()
+    processFiles()
+    #processFiles2()
