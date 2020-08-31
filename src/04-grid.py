@@ -144,24 +144,41 @@ def save_tsne_grid2(img_collection, X_2d, out_res, out_dim):
     im = Image.fromarray(out)
     im.save(out_dir + out_name, quality=100)
 
+def f(x):
+    ar = np.array(Image.open(x).resize(size=(out_res, out_res)).convert('RGBA'))
+    if ar.shape[2] >= 4:
+        alpha = ar[:, :, 3] / 255.0
+        premultiplied = ar[:, :, 0:3] * np.repeat(alpha[:, :, None], 3, axis=2)
+        #print("shape", premultiplied.shape)
+        ar[:, :, 0:3] = premultiplied.astype(np.uint8)
+    return ar
+
 def readImage(args):
     path, out_res, processIndex = args
-    f = lambda x: np.array(Image.open(x).resize(size=(out_res, out_res)).convert('RGBA'))
     try:
-        img = Image.open(path)
-        if img.width < out_res or img.height < out_res:
-            #print("scaling", img)
-            factor = max(2, out_res // min(img.width, img.height))
-            outfname = 'out' + str(processIndex) + '.png'
-            command = '../hqx/hqx -s ' + str(factor) + ' "' + path + '" ' + outfname
+        outfname = 'out' + str(processIndex) + '.png'
+        if '.bmp.png' in path or '.svg.png' in path:
+            command = 'convert "' + path + '" ' + outfname
+            print("converting", command)
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
             process.wait()
             img = f(outfname)
             os.remove(outfname)
         else:
-            img = f(path)
+            img = Image.open(path)
+            if img.width < out_res or img.height < out_res:
+                #print("scaling", img)
+                factor = min(4, max(2, out_res // min(img.width, img.height)))
+                command = '../hqx/hqx -s ' + str(factor) + ' "' + path + '" ' + outfname
+                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+                process.wait()
+                img = f(outfname)
+                os.remove(outfname)
+            else:
+                img = f(path)
         return img
     except:
+        raise
         print("Error loading image: " + path)
     return f('../blank.png')
 
@@ -491,7 +508,7 @@ def prepareImages(img_collection, out_dim, out_res):
         out = np.zeros((out_dim * out_res, out_dim * out_res, 4), dtype=np.uint8)
         k = 0
         batch = []
-        batchSize = 12
+        batchSize = 16
         start = time.time()
         with multiprocessing.Pool(batchSize) as p:
             for i, fpath in enumerate(img_collection):
@@ -543,23 +560,37 @@ def getImageColors(img_collection):
         colors[i] = color
     return colors
 
-def getFiles(imageDir):
-    if not os.path.exists('filelist.txt'):
+def getFiles():
+    savefile = 'allpaths.txt'
+    if not os.path.exists(savefile):
+        print("ERROR: run script list_files.py first")
+        sys.exit()
         paths = []
         for root, dirs, files in os.walk(imageDir):
             for file in files:
                 if file.lower().endswith('.np'):
                     file2 = file[:-len('.np')]
                     paths.append(os.path.join(root, file2))
-        fd = open('filelist.txt', 'w')
+        fd = open(savefile, 'w')
         fd.writelines([x + '\n' for x in paths])
         fd.close()
     else:
-        fd = open('filelist.txt', 'r')
-        paths = [x.rstrip() for x in fd.readlines()]
+        fd = open(savefile, 'r')
+        paths = [x[:-len('.np')] for x in fd.read().split('\0')[:-1]]
         fd.close()
     out_dim = math.ceil(math.sqrt(len(paths)))
     to_plot = np.square(out_dim)
+
+    #for i, path in enumerate(paths):
+        # workaround for bug
+        #paths[i] = path.replace('.bmp.png', '.bmp').replace('.svg.png', '.svg')
+
+    #print("paths[0]", paths[0])
+    #return
+    
+    test = readImage((paths[0], 32, 0))
+
+    paths.sort()
 
     path = '../blank.png'
     # blank = Image.open(path).resize(size=(out_res, out_res))
@@ -567,26 +598,26 @@ def getFiles(imageDir):
         paths.append(path)
 
     #print('WARNING: reenable sort for ^unpacked')
-    paths.sort()
 
     return (out_dim, to_plot, paths)
 
 if __name__ == '__main__':
     out_dir = './'
-    out_name = 'gridtsne16.png'
+    out_name = 'gridtsne17.png'
     out_res = 32
     #out_res = 8
     #image_np_pattern = '/mnt/d/opengameart/sprites/*.np'
 
-    imageDir = '/mnt/d/opengameart/unpacked'
+    #imageDir = '/mnt/d/opengameart/unpacked'
     #imageDir = '/mnt/d/opengameart/sprites'
-    out_dim, to_plot, pathlist = getFiles(imageDir)
+    out_dim, to_plot, pathlist = getFiles()
     #out_dim = math.ceil(math.sqrt(len(glob(image_np_pattern))))
     #to_plot = np.square(out_dim)
 
     #img_collection = readImages(image_np_pattern, out_res, to_plot)[0:to_plot]
 
-    X_2d = readXY()[0:to_plot]
+    if 0:
+        X_2d = readXY()[0:to_plot]
 
     if 0:
         #X_2d = spreadXY(X_2d, 1 / out_dim, 0.1 / out_dim)
