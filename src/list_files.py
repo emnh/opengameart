@@ -80,7 +80,7 @@ if __name__ == '__main__':
     print("blacklisted", bcount)
     paths = newpaths
     for i, path in enumerate(paths):
-        paths[i] = path + '\n'
+        paths[i] = path + '.np\0'
 
     bigsavefile = 'allpaths.txt'
     fd = open(bigsavefile, 'w')
