@@ -51,7 +51,38 @@ if __name__ == '__main__':
     paths.extend(unpackedPaths)
     paths.sort()
 
+    blacklisted = open('blacklist-expanded.txt').readlines()
+    blackpaths = []
+    for path in blacklisted:
+        path = path.rstrip()
+        fpath = path.replace('files/', filesDir + '/')
+        upath = path.replace('files/', unpackedDir + '/')
+        spath = path.replace('files/', spriteDir + '/')
+        spath = os.path.splitext(spath)[0]
+        blackpaths.append(fpath)
+        blackpaths.append(upath)
+        blackpaths.append(spath)
+    newpaths = []
+    bcount = 0
+    for path in paths:
+        black = False
+        for bpath in blackpaths:
+            if path.startswith(bpath):
+                #print("blacklisting file", path, " it starts with ", bpath)
+                if not black:
+                    bcount += 1
+                black = True
+            else:
+                pass
+                #print(path, bpath)
+        if not black:
+            newpaths.append(path)
+    print("blacklisted", bcount)
+    paths = newpaths
+    for i, path in enumerate(paths):
+        paths[i] = path + '\n'
+
     bigsavefile = 'allpaths.txt'
     fd = open(bigsavefile, 'w')
-    fd.writelines([x + '\n' for x in paths])
+    fd.writelines(paths)
     fd.close()
