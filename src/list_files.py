@@ -25,25 +25,27 @@ if __name__ == '__main__':
     filesDir = '/mnt/i/opengameart/files'
     unpackedDir = '/mnt/i/opengameart/unpacked'
     
-    paths = []
     spritePaths = getFiles(spriteDir, 'sprites.txt')
     filePaths = getFiles(filesDir, 'files.txt')
     unpackedPaths = getFiles(unpackedDir, 'unpacked.txt')
 
+    # Determine which images have been split to sprites
     l = len('_00000.png')
-    usedPaths = [(x[:-l] + '.png').replace(spriteDir, imageDir) for x in paths]
+    usedPaths = [(x[:-l] + '.png').replace(spriteDir, filesDir) for x in spritePaths]
     d = {}
     for path in usedPaths:
         d[path] = True
 
     count = 0
     noncount = 0
+    paths = []
     for path in filePaths:
         if path in d:
             noncount += 1
         else:
             count += 1
             paths.append(path)
+    print("non-spritesheets", count, "spritesheets", noncount)
 
     paths.extend(spritePaths)
     paths.extend(unpackedPaths)
