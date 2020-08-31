@@ -35,7 +35,7 @@ def loadImage(args):
         return x
     except:
         print("ERROR LOADING IMAGE: " + img_path)
-        return None
+        return []
 
 def processFiles():
     #model.summary()
@@ -84,8 +84,9 @@ def processFiles():
                 #print(x.shape)
                 images = p.map(loadImage, batch)
                 xs = np.zeros((len(batch), 224, 224, 3))
-                for j, x in enumerate(images):
-                    xs[j] = x[0]
+                for j, img in enumerate(images):
+                    if len(img) > 0:
+                        xs[j] = img[0]
                 features = feat_extractor.predict(xs)
                 #flist = features[0].tolist()
                 end = time.time()
@@ -97,7 +98,7 @@ def processFiles():
                 #print(features.shape)
                 for (outpath2, _), feature, image in zip(batch, features, images):
                     #print(".", end="")
-                    if image != None:
+                    if len(image) > 0:
                         fd = open(outpath2, 'wb')
                         # TODO: what is the difference between ravel and flatten?
                         fd.write(feature.ravel().tobytes())
