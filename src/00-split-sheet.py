@@ -9,8 +9,9 @@ import random
 from pprint import pprint
 import sys
 import math
-import cv2 as cv
+#import cv2 as cv
 import os
+from pathlib import Path
 
 paths = [
     ('/mnt/d/opengameart/files/ProjectUtumno_supplemental_0.png', (32, 32)),
@@ -449,10 +450,12 @@ def process(path, flist):
     s = sum(x[1] for x in ds)
     isSheet = s >= 2
     #print(ds)
-    outdir = '/mnt/d/opengameart/sprites/'
+    #outdir = '/mnt/i/opengameart/unpacked_sprites'
+    dirname = os.path.dirname(path).replace('/unpacked/', '/unpacked_sprites/').replace('/files/', '/sprites/')
+    Path(dirname).mkdir(parents=True, exist_ok=True)
     bname, ext = os.path.splitext(os.path.basename(path))
-    if not os.path.exists(outdir):
-        os.mkdir(outdir)
+    #if not os.path.exists(outdir):
+    #    os.mkdir(outdir)
     ar = np.array(img)
     if isSheet:
         k = 0
@@ -463,7 +466,7 @@ def process(path, flist):
                 k += 1
                 sprite = ar[bounds[0]:bounds[2], bounds[1]:bounds[3]]
                 bname2 = bname + '_' + ((5 - len(str(k))) * '0') + str(k) + ext
-                outname = os.path.join(outdir, bname2)
+                outname = os.path.join(dirname, bname2)
                 if k == 1 or k % 100 == 0:
                     print("saving", outname)
                 Image.fromarray(sprite).save(outname)
@@ -473,34 +476,58 @@ def process(path, flist):
         # uniformSplittable = ds[-1][1] >= s // 2
     # tryToDetectSplitSize(img)
 
-def processDir(path):
-    fnames = os.listdir(path)
+def processDir():
+    #fnames = os.listdir(path)
+    savefile = 'allpaths.txt'
+    fd = open(savefile, 'r')
+    fpaths = [x[:-len('.np')] for x in fd.read().split('\0')[:-1] if x.lower().endswith('.png.np')]
+    print("WARNING: skipping /files/ (and /sprites/, which should be skipped)")
+    fpaths = [x for x in fpaths if not '/files/' in x and not '/sprites/' in x]
+
+    fd.close()
+    #for root, dirs, files in os.walk(path):
+    #    for file in files:
+    #        if file.lower().endswith('.png'):
+    #            fpaths.append(os.path.join(root, file))
+
+    if not os.path.exists('splitsheets.txt'):
+        flistfd = open('splitsheets.txt', 'a')
+        flistfd.close()
     flistfd = open('splitsheets.txt', 'r')
     flistdata = [x.rstrip() for x in flistfd.readlines()]
     flistfd.close()
+    flistdict = {}
+    for fl in flistdata:
+        flistdict[fl] = True
     flist = open('splitsheets.txt', 'a')
-    for i, fname in enumerate(fnames):
-        if fname == 'smoke.png':
-            # oom error
+    for i, fpath in enumerate(fpaths):
+        if 0:
+            if fname == 'smoke.png':
+                # oom error
+                continue
+            if fname == 'trees_mega_pack_cc_by_3_0.png':
+                # oom error
+                continue
+            if fname == 'Urban%20Character%20Pack%20large%20transparent_0.png':
+                # oom error
+                continue
+            if fname == 'Urban%20Character%20Pack%20large.png':
+                # oom error
+                continue
+            if fname == 'Urban%20Character%20Pack%20large_0.png':
+                # oom error
+                continue
+        if '1bit_beauties' in fpath:
             continue
-        if fname == 'trees_mega_pack_cc_by_3_0.png':
-            # oom error
+        if 'Hill_1.png' in fpath:
             continue
-        if fname == 'Urban%20Character%20Pack%20large%20transparent_0.png':
-            # oom error
-            continue
-        if fname == 'Urban%20Character%20Pack%20large.png':
-            # oom error
-            continue
-        if fname == 'Urban%20Character%20Pack%20large_0.png':
-            # oom error
-            continue
+        fname = os.path.basename(fpath)
         flow = fname.lower()
         if flow.endswith('png'):
-            fpath = os.path.join(path, fname)
-            if fpath in flistdata:
+            #fpath = os.path.join(path, fname)
+            if fpath in flistdict:
                 continue
-            print("processing", i, 'out of', len(fnames), 'at', fpath)
+            print("processing", i, 'out of', len(fpaths), 'at', fpath)
             try:
                 process(fpath, flist)
             except:
@@ -511,4 +538,4 @@ def processDir(path):
 
 if __name__ == "__main__":
     # ar = ar[0:32, 0:32, :]
-    processDir('/mnt/d/opengameart/files')
+    processDir()

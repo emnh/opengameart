@@ -178,7 +178,6 @@ def readImage(args):
                 img = f(path)
         return img
     except:
-        raise
         print("Error loading image: " + path)
     return f('../blank.png')
 
@@ -603,7 +602,7 @@ def getFiles():
 
 if __name__ == '__main__':
     out_dir = './'
-    out_name = 'gridtsne17.png'
+    out_name = 'gridtsne18.png'
     out_res = 32
     #out_res = 8
     #image_np_pattern = '/mnt/d/opengameart/sprites/*.np'
@@ -616,12 +615,11 @@ if __name__ == '__main__':
 
     #img_collection = readImages(image_np_pattern, out_res, to_plot)[0:to_plot]
 
-    if 0:
+    if 1:
         X_2d = readXY()[0:to_plot]
 
-    if 0:
-        #X_2d = spreadXY(X_2d, 1 / out_dim, 0.1 / out_dim)
-        X_2d = spreadXY(X_2d, 2 / out_dim, 0.25 / out_dim)
+    if 1:
+        #X_2d = spreadXY(X_2d, 2 / out_dim, 0.25 / out_dim)
         plt.figure(figsize=(40, 40))
         #clr = [i * 255 // len(X_2d) for i in range(len(X_2d))]
         #clr = [i // out_dim for i in range(len(X_2d))]

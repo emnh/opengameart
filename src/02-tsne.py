@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
-sys.path += ['/mnt/d/dev/opengameart/bhtsne']
-import bhtsne
+#sys.path += ['/mnt/d/dev/opengameart/bhtsne']
+#import bhtsne
 import numpy as np
 import json
 import os
@@ -95,7 +95,7 @@ if 0:
 
 #tsne = TSNE(n_components=2)
 #embedding_array = bhtsne.run_bh_tsne(data2, initial_dims=data2.shape[1], verbose=True).tolist()
-data2 = data2[0:230000]
+#data2 = data2[0:230000]
 tsne = TSNE(n_components=2, perplexity=50, n_iter=5000, angle=0.8, learning_rate=10, n_neighbors=2)
 embedding_array = tsne.fit_transform(data2).tolist()
 #embedding_array = data2.tolist()
