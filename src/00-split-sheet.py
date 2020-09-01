@@ -443,7 +443,7 @@ def tryToDetectSplitSize(img):
     #Image.fromarray(out).save('out.png')
     #img.filter(ImageFilter.FIND_EDGES).save('edge.png')
 
-def process(path, flist):
+def process(path):
     img = Image.open(path).convert('RGBA')
     ar = np.array(img)
     out, ds, boundsList = splitSheet(ar)
@@ -470,8 +470,8 @@ def process(path, flist):
                 if k == 1 or k % 100 == 0:
                     print("saving", outname)
                 Image.fromarray(sprite).save(outname)
-        if k > 0:
-            flist.write(path + '\n')
+        #if k > 0:
+        #    flist.write(path + '\n')
         # if ds[-1] >= s // 2:
         # uniformSplittable = ds[-1][1] >= s // 2
     # tryToDetectSplitSize(img)
@@ -521,6 +521,8 @@ def processDir():
             continue
         if 'Hill_1.png' in fpath:
             continue
+        if 'BirdPilot_0' in fpath:
+            continue
         fname = os.path.basename(fpath)
         flow = fname.lower()
         if flow.endswith('png'):
@@ -529,9 +531,10 @@ def processDir():
                 continue
             print("processing", i, 'out of', len(fpaths), 'at', fpath)
             try:
-                process(fpath, flist)
+                process(fpath)
             except:
                 print("error")
+            flist.write(fpath + '\n')
     flist.close()
 
 # TODO: delete unicolored "sprites"
