@@ -13,6 +13,7 @@ import subprocess
 import multiprocessing
 from glob import glob
 from scipy.spatial.distance import cdist
+from lapjv import lapjv
 
 import matplotlib.pyplot as plt
 
@@ -59,14 +60,16 @@ def split(X, dim):
     splitPoint = len(X) // 2
     return [X[0:splitPoint], X[splitPoint:len(X)]]
 
-def save_tsne_grid2(img_collection, X_2d, out_res, out_dim):
-    from lapjv import lapjv
+def doLAPJV(args):
+    cost_matrix = args[-1]
+    return lapjv(cost_matrix)
 
+def save_tsne_grid2(img_collection, X_2d, out_res, out_dim):
     X = [(x, y, i) for i, (x, y) in enumerate(X_2d)]
 
     #bucketDim2 = 1024
-    #bucketDim2 = 4096
-    bucketDim2 = 16384
+    bucketDim2 = 4096
+    #bucketDim2 = 16384
     iout = len(X) * 2
     nearestPower2 = 2 ** math.ceil(math.log2(len(X)))
     for i in range(nearestPower2 - len(X)):
@@ -95,51 +98,62 @@ def save_tsne_grid2(img_collection, X_2d, out_res, out_dim):
     out = np.zeros((out_dim * out_res, out_dim * out_res, 4), np.uint8)
     print('len(buckets)', len(buckets), 'bucketDim2', bucketDim2, 'bucket_dim', bucket_dim, 'bucketsX', bucketsX, 'out_dim', out_dim, 'toplot', toplot)
 
-    for bi, bucket in enumerate(buckets):
-        print("lapjv bucket", bi, len(buckets))
-        X_2d = bucket
-        baseX = (bi % (bucketsX - 0)) * bucket_dim * out_res
-        baseY = (bi // (bucketsX - 0)) * bucket_dim * out_res
-        indices = [i for x, y, i in bucket]
-        bucket = [(x, y) for x, y, i in bucket]
-        # zero pad
-        #for i in range(bucketDim2 - len(bucket)):
-        #    bucket.append([(0, 0)])
-        npBucket = np.zeros((toplot, 2))
-        for i, (x, y) in enumerate(bucket):
-            npBucket[i][0] = x
-            npBucket[i][1] = y
+    batchSize = 8
+    batch = []
+    with multiprocessing.Pool(batchSize) as p:
+        for bi, bucket in enumerate(buckets):
+            print("lapjv bucket", bi, len(buckets))
+            X_2d = bucket
+            baseX = (bi % (bucketsX - 0)) * bucket_dim * out_res
+            baseY = (bi // (bucketsX - 0)) * bucket_dim * out_res
+            indices = [i for x, y, i in bucket]
+            bucket = [(x, y) for x, y, i in bucket]
+            # zero pad
+            #for i in range(bucketDim2 - len(bucket)):
+            #    bucket.append([(0, 0)])
+            npBucket = np.zeros((toplot, 2))
+            for i, (x, y) in enumerate(bucket):
+                npBucket[i][0] = x
+                npBucket[i][1] = y
 
-        grid = np.dstack(np.meshgrid(np.linspace(0, 1, bucket_dim), np.linspace(0, 1, bucket_dim))).reshape(-1, 2)
-        cost_matrix = cdist(grid, npBucket, "sqeuclidean").astype(np.float32)
-        cost_matrix = cost_matrix * (100000 / cost_matrix.max())
-        row_asses, col_asses, _ = lapjv(cost_matrix)
-        grid_jv = grid[col_asses]
+            grid = np.dstack(np.meshgrid(np.linspace(0, 1, bucket_dim), np.linspace(0, 1, bucket_dim))).reshape(-1, 2)
+            cost_matrix = cdist(grid, npBucket, "sqeuclidean").astype(np.float32)
+            cost_matrix = cost_matrix * (100000 / cost_matrix.max())
 
-        for pos, i in zip(grid_jv, range(toplot)):
-            if i >= len(indices):
-                #print("blank i", i)
-                continue
-            k = indices[i]
+            batch.append([indices, baseX, baseY, grid, cost_matrix])
 
-            x, y = pos
-            x = int(np.floor(x * (bucket_dim - 1) * out_res)) + baseX
-            y = int(np.floor(y * (bucket_dim - 1) * out_res)) + baseY
-            # print("xy", baseX, baseY, x, y)
-            h_range = x
-            w_range = y
+            if bi + 1 >= len(buckets) or len(batch) >= batchSize:
+                print("processing lapjv batch")
+                rets = p.map(doLAPJV, batch)
+                for (indices, baseX, baseY, grid, _), ret in zip(batch, rets):
+                    row_asses, col_asses, _ = ret
+                    grid_jv = grid[col_asses]
 
-            if k == iout:
-                #print("blank k", k, x, y)
-                continue
+                    for pos, i in zip(grid_jv, range(toplot)):
+                        if i >= len(indices):
+                            #print("blank i", i)
+                            continue
+                        k = indices[i]
 
-            x2, y2 = k % (img_collection.shape[0] // out_res), k // (img_collection.shape[1] // out_res)
-            h_range2 = x2 * out_res
-            w_range2 = y2 * out_res
-            #print("hmmmmm", i, x2, y2, h_range2, w_range2)
-            img = img_collection[h_range2:h_range2 + out_res, w_range2:w_range2 + out_res, :]
+                        x, y = pos
+                        x = int(np.floor(x * (bucket_dim - 1) * out_res)) + baseX
+                        y = int(np.floor(y * (bucket_dim - 1) * out_res)) + baseY
+                        # print("xy", baseX, baseY, x, y)
+                        h_range = x
+                        w_range = y
 
-            out[h_range:h_range + out_res, w_range:w_range + out_res] = img
+                        if k == iout:
+                            #print("blank k", k, x, y)
+                            continue
+
+                        x2, y2 = k % (img_collection.shape[0] // out_res), k // (img_collection.shape[1] // out_res)
+                        h_range2 = x2 * out_res
+                        w_range2 = y2 * out_res
+                        #print("hmmmmm", i, x2, y2, h_range2, w_range2)
+                        img = img_collection[h_range2:h_range2 + out_res, w_range2:w_range2 + out_res, :]
+
+                        out[h_range:h_range + out_res, w_range:w_range + out_res] = img
+                batch = []
 
     im = Image.fromarray(out)
     im.save(out_dir + out_name, quality=100)
