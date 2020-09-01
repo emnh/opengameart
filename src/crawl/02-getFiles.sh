@@ -1,8 +1,15 @@
 #!/bin/bash
-fgrep 'File(s)' content/* |
+#fgrep 'File(s)' content/* |
+cat content/* |
 grep -o "https://opengameart.org/sites/default/files/[^'\"]*" |
 fgrep -v /files/styles |
-sort | while read file; do
+sort -u > allfiles.txt
+
+len=$(wc -l allfiles.txt)
+i=0
+cat allfiles.txt | while read file; do
+  i=$(($i + 1))
+  echo $i / $len: $file
   bname=$(basename $file)
   path="s3://opengameart/files/$bname"
   count=`s3cmd ls "$path" | wc -l`
