@@ -43,6 +43,7 @@ for i, fname in enumerate(files):
     license = ', '.join(license)
     if license == 'GPL 2.0':
         blacklist.write(fname + '\n')
+        continue
     page = 'http://opengameart.org/' + fname.replace('.html', '')
     if not attribution:
         attribution = 'None'
