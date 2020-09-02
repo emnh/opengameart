@@ -523,6 +523,12 @@ def processDir():
             continue
         if 'BirdPilot_0' in fpath:
             continue
+        if 'PlatformerPack2_Example.png' in fpath:
+            continue
+        if 'spritesheet_chips_large.png' in fpath:
+            continue
+        if 'spritesheet_poker_assets_large.png' in fpath:
+            continue
         fname = os.path.basename(fpath)
         flow = fname.lower()
         if flow.endswith('png'):
