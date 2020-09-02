@@ -1,16 +1,32 @@
 #!/bin/bash
-s3cmd la --recursive | fgrep -v /unpacked/ > out.txt
+#s3cmd la --recursive | fgrep -v /unpacked/ > out.txt
+#s3cmd la --recursive | fgrep /unpacked/ > unpacked.txt
+mkdir -p extract
 egrep -o 's3://.*\.((zip)|(7z)|(rar)|(tar)|(tgz)|(tar.gz)|(tar.bz2))$' out.txt |
 while read file; do
   bname=$(basename $file)
   dfile=$(echo $file | sed s@/opengameart/files@/opengameart/unpacked@)
   path=$dfile
+
+  # PixVoxel packs are too big
+  if $(echo $bname | fgrep -q PixVoxel); then
+    echo "Skipping 0: $file"
+    continue
+  fi
+
+  count=`fgrep -c "$path" unpacked.txt`
+  if [[ $count -gt 0 ]]; then
+    echo "Skipping 1: $file"
+    continue
+  fi
+
   count=`s3cmd ls "$path" | wc -l`
   if [[ $count -gt 0 ]]; then
-    echo "Skipping $file"
+    echo "Skipping 2: $file"
     sleep 0.1
     continue
   fi
+
   rm -rf extract/unpacked
   mkdir extract/unpacked &&
   s3cmd get "$file" "extract/$bname" &&
