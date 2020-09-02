@@ -42,7 +42,7 @@ def processFiles():
     #feat_extractor.summary()
 
     #if len(sys.argv) > 1:
-    rootpath = '/mnt/i/opengameart/files'
+    rootpath = '/mnt/i/opengameart/unpacked_sprites'
     #prevfd = open('files-list.txt')
     #prevdata = prevfd.read()
     #d = {}
