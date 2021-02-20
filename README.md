@@ -63,7 +63,8 @@ conda init
 conda install tensorflow
 conda install cudnn
 conda install tensorflow-gpu
-#conda install -c rapidsai-nightly -c nvidia -c conda-forge -c defaults rapids=0.15 python=3.8 cudatoolkit=10.1
+# DEPRECATED: conda install -c rapidsai-nightly -c nvidia -c conda-forge -c defaults rapids=0.15 python=3.8 cudatoolkit=10.1
+# NEW: conda create -n rapids-core-0.17 -c rapidsai -c nvidia -c conda-forge -c defaults rapids=0.17 python=3.8 cudatoolkit=11.0
 # follow https://developer.nvidia.com/blog/announcing-cuda-on-windows-subsystem-for-linux-2/
 
 docker pull rapidsai/rapidsai:cuda11.0-runtime-ubuntu18.04
